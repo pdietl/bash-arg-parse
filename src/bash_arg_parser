@@ -138,6 +138,7 @@ BAP_generate_parse_func() {
 }
 
 BAP_new_command() {
+    [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: Usage is '$FUNCNAME <new_command>'"
     local cmd_name=$1
 	
 	if ! __bash_parse_check_valid_bash_var_name "$cmd_name"; then

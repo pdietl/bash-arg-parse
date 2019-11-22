@@ -2,7 +2,7 @@
 
 . ../src/bash_arg_parser
 
-BAP_new_command 'genkey'
+BAP_new_command
 BAP_set_top_level_cmd_name 'genkey' 'titanium-modsign'
 BAP_add_required_short_opt 'genkey' 'o' 'output_dir'
 BAP_add_optional_short_opt 'genkey' 'c' 'x509_config'
