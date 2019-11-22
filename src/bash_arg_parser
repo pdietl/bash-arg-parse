@@ -1,0 +1,169 @@
+#!/bin/bash
+
+set -eu
+
+#####################
+# Private functions #
+#####################
+
+__bash_parse_die() {
+    echo -e "$@" >&2
+    exit 1
+}
+
+__bash_parse_die_required_arg() {
+    local arg_name=$1
+    local usage_text=$2
+
+    echo "fatal: $arg_name required." >&2
+    __bash_parse_die "Usage: $usage_text"
+}
+
+__bash_parse_check_opt_arg() {
+    local arg=${1}
+
+    # don't let it be empty or start with a '-',
+    # because that is probably an option flag
+    [ -n "${arg}" ] && ! [[ "${arg}" = -* ]]
+}
+
+__bash_parse_check_valid_bash_var_name() {
+	local bash_var_name=$1
+	local re='^[_a-zA-Z][_a-zA-Z0-9]*'
+	[[ "$bash_var_name" =~ $re ]]
+}
+
+__bash_parse_assert_defined() {
+    local cmd_name=$1
+    local funcname=$2
+
+    if ! [ -v "$cmd_name" ]; then
+        __bash_parse_die "INTERNAL ERROR: ($funcname) must call 'BAP_new_command()' first to define command '$cmd_name'"
+    fi
+}
+
+__bash_parse_assert_short_opt() {
+    local character=$1
+    local funcname=$2
+
+    if ! [ ${#character} -eq 1 ]; then
+        __bash_parse_die "INTERNAL ERROR: ($funcname) must only provide a single litter as a short opt argument!\nOffending argument: '$character'"
+    fi
+}
+
+__bash_parse_add_opt() {
+    local cmd_name=$1
+    local opt_letter=$2
+    local opt_name=$3
+    local opt_required_or_optional=$4
+    local funcname=$5
+
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" "$funcname"
+    __bash_parse_assert_short_opt "$opt_letter" "$funcname"
+    
+    opt_letter=$(printf "%q" "$opt_letter")
+
+    eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional)"
+
+}
+
+##############
+# Public API #
+##############
+
+BAP_generate_parse_func() {
+    local name_of_command=$1
+
+    __bash_parse_assert_defined "__bash_parse_cmd_$name_of_command" "$FUNCNAME"
+
+    eval "local top_level_cmd=\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name"
+    local sub_cmd_name=$name_of_command
+    local cmd_name="$top_level_cmd $sub_cmd_name"
+
+    local script=""
+    local script_locals=""
+    local eval_ret=""
+    local getopts_str=":"
+    local getopts_case_body=""
+    local getopts_case_colon_body=""
+    local check_for_req_args_body=""
+    local usage_text="$sub_cmd_name"
+
+    eval "declare -n short_opt_array=__bash_parse_cmd_${name_of_command}_opts"
+
+    for ((i = 0; i < ${#short_opt_array[@]}; i += 3)); do
+        local opt_letter=${short_opt_array[i]}
+        local opt_text=${short_opt_array[i + 1]}
+        local opt_type=${short_opt_array[i + 2]}
+        
+        script_locals+="local __var_$opt_text=; "
+        eval_ret+="local $opt_text=\$__var_$opt_text; "
+        getopts_str+="$opt_letter:"
+        getopts_case_body+="$opt_letter) __var_$opt_text=\$OPTARG; "
+        getopts_case_body+="__bash_parse_check_opt_arg \"\$__var_$opt_text\" || "
+        getopts_case_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\";; "
+
+        getopts_case_colon_body+="$opt_letter) "
+        getopts_case_colon_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\";; "
+
+        case "$opt_type" in
+            required) 
+                usage_text+=" -$opt_letter <$opt_text>"
+
+                check_for_req_args_body+="[ -z \"\$__var_$opt_text\" ] && "
+                check_for_req_args_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\"; "
+                ;;
+            optional)
+                usage_text+=" [-$opt_letter <$opt_text>]"
+                ;;
+            *)
+                __bash_parse_die "INTERNAL ERROR: ($FUNCNAME) invalid opt_type of '$opt_type'"
+                ;;
+        esac
+    done
+
+    script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
+    script+="parse_${sub_cmd_name}_args() { "
+    script+=$script_locals
+    script+="[ \$# -eq 0 ] && __bash_parse_die \"Usage: $top_level_cmd \$USAGE_TEXT_$sub_cmd_name\"; "
+    script+="while getopts '$getopts_str' opt; do case \$opt in "
+    script+=$getopts_case_body 
+    script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
+    script+="\\?) __bash_parse_die \"Unsupported option: -\$OPTARG\";; esac; done; "
+    script+=$check_for_req_args_body
+    script+="echo \"$eval_ret\"; "
+    script+="}"
+
+    eval "$script"
+}
+
+BAP_new_command() {
+    local cmd_name=$1
+	
+	if ! __bash_parse_check_valid_bash_var_name "$cmd_name"; then
+        __bash_parse_die "INTERNAL ERROR: ($FUNCNAME) must provide a valid bash variable name as new command name!\nOffending name: '$cmd_name'"
+    fi
+
+    # Just define this variable
+    declare -gr __bash_parse_cmd_${cmd_name}=
+    declare -g __bash_parse_cmd_${cmd_name}_top_level_cmd_name=
+    eval "declare -g __bash_parse_cmd_${cmd_name}_opts=()"
+}
+
+BAP_set_top_level_cmd_name() {
+    local cmd_name=$1
+    local top_level_cmd_name=$2
+    
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" "$FUNCNAME"
+    
+    eval "__bash_parse_cmd_${cmd_name}_top_level_cmd_name=\$top_level_cmd_name"
+}
+
+
+BAP_add_required_short_opt() {
+    __bash_parse_add_opt "$1" "$2" "$3" required "$FUNCNAME"
+}
+
+BAP_add_optional_short_opt() {
+    __bash_parse_add_opt "$1" "$2" "$3" optional "$FUNCNAME"
+}
