@@ -1,0 +1,14 @@
+name: CI
+
+on: [push]
+
+jobs:
+  main:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run bats tests
+      run: make docker-test
+    
