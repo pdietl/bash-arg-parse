@@ -5,7 +5,7 @@ vol_mnt    = -v $(1):$(1)
 vol_mnt_ro = $(call vol_mnt,$(1)):ro
 map        = $(foreach f,$(2),$(call $(1),$(f)))
 
-DOCKER_ARGS = --rm -w $(CURDIR) $(call vol_mnt,$(CURDIR))
+DOCKER_ARGS = -t --rm -w $(CURDIR) $(call vol_mnt,$(CURDIR))
 DOCKER_ARGS += $(call map,vol_mnt_ro,/etc/passwd /etc/group)
 ifeq ($(ROOT),)
     DOCKER_ARGS += -u $(shell id -u):$(shell id -g)
