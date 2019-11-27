@@ -186,7 +186,8 @@ BAP_generate_parse_func() {
 EOM
         
     # Remeber that you can use the 'type' command
-    # in your program after calling 'BAP_generate_parser()'    # to have Bash pretty-print the resuling function
+    # in your program after calling 'BAP_generate_parser()'
+    # to have Bash pretty-print the resuling function`
     # if you are curious :)
     # see examples/type_example
 
