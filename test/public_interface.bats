@@ -258,3 +258,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     BAP_generate_parse_func "$cmd"
     type -t "parse_${cmd}_args"
 }
+
+#
+# BAP_create_help_option
+#
