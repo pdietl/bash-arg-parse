@@ -6,7 +6,7 @@ set -eu
 # Private functions #
 #####################
 
-declare -gr __bash_parse_add_short_opt_usage="Usage is '\$FUNCNAME <command> <opt_letter> <opt_name>'"
+declare -gr __bash_parse_add_short_opt_usage="Usage is '\$FUNCNAME <command> <opt_letter> <opt_name> [<help text>]'"
 
 __bash_parse_die() {
     echo -e "$@" >&2
@@ -37,12 +37,13 @@ __bash_parse_check_valid_bash_var_name() {
 
 __bash_parse_assert_defined() {
     local cmd_name=$1
-    local funcname=$2
+    local func_that_should_have_been_called=$2
+    local funcname=$3
 
     #BASH_LINENO[second from last] is the line number
     #of the caller of the public api
     if ! [ -v "$cmd_name" ]; then
-        __bash_parse_die "$0: line ${BASH_LINENO[${#BASH_LINENO[@]} - 2]}: ($funcname) must call 'BAP_new_command()' first to define command '${cmd_name##__bash_parse_cmd_}'"
+        __bash_parse_die "$0: line ${BASH_LINENO[${#BASH_LINENO[@]} - 2]}: ($funcname) must call '$func_that_should_have_been_called' first to define command '${cmd_name##__bash_parse_cmd_}'"
     fi
 }
 
@@ -56,13 +57,25 @@ __bash_parse_assert_short_opt() {
 }
 
 __bash_parse_add_opt() {
-    local cmd_name=$1
-    local opt_letter=$2
-    local opt_name=$3
-    local opt_required_or_optional=$4
-    local funcname=$5
+    if [ $# -eq 5 ]; then
+        local cmd_name=$1
+        local opt_letter=$2
+        local opt_name=$3
+        local opt_required_or_optional=$4
+        local funcname=$5
+        local help_text=
+    elif [ $# -eq 6 ]; then
+        local cmd_name=$1
+        local opt_letter=$2
+        local opt_name=$3
+        local help_text=$4
+        local opt_required_or_optional=$5
+        local funcname=$6
+    else
+        __bash_parse_die "INTERNAL ERROR! Wrong number of args passed to ''"
+    fi
 
-    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" "$funcname"
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$funcname"
     __bash_parse_assert_short_opt "$opt_letter" "$funcname"
     if ! __bash_parse_check_valid_bash_var_name "$opt_name"; then
         __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must provide a valid Bash variable name for parameter <opt_name>\nOffending argument: '$opt_name'"
@@ -73,6 +86,8 @@ __bash_parse_add_opt() {
 
     eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional)"
 
+    [ -n "$help_text" ] && eval "__bash_parse_cmd_${cmd_name}_opts_help_text+="'"'$'\n''  -$opt_letter      $help_text"'
+    true
 }
 
 ##############
@@ -80,14 +95,12 @@ __bash_parse_add_opt() {
 ##############
 
 BAP_generate_parse_func() {
+    [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: Usage is 'BAP_generate_parse_func <command>'"
     local name_of_command=$1
 
-    __bash_parse_assert_defined "__bash_parse_cmd_$name_of_command" "$FUNCNAME"
+    __bash_parse_assert_defined "__bash_parse_cmd_$name_of_command" 'BAP_new_command()' "$FUNCNAME"
 
-    eval "local top_level_cmd=\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name"
     local sub_cmd_name=$name_of_command
-    local cmd_name="$top_level_cmd $sub_cmd_name"
-
     local script=""
     local script_locals=""
     local eval_ret=""
@@ -96,8 +109,20 @@ BAP_generate_parse_func() {
     local getopts_case_colon_body=""
     local check_for_req_args_body=""
     local usage_text="$sub_cmd_name"
+    
+    declare -n create_help_option="__bash_parse_cmd_${name_of_command}_create_help_option"
+
+
+    eval "local top_level_cmd=\"\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name \""
+    [ "$top_level_cmd" = " " ] && top_level_cmd=
 
     eval "declare -n short_opt_array=__bash_parse_cmd_${name_of_command}_opts"
+
+    if [ "$create_help_option" = yes ]; then
+        usage_text+=" -h"
+        getopts_str+='h'
+        getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\";; "
+    fi
 
     for ((i = 0; i < ${#short_opt_array[@]}; i += 3)); do
         local opt_letter=${short_opt_array[i]}
@@ -130,10 +155,13 @@ BAP_generate_parse_func() {
         esac
     done
 
+    declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
+    [ "$create_help_option" = yes ] && usage_text+=$'\n\nOptions:'$opts_help_text
+
     script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
     script+="parse_${sub_cmd_name}_args() { "
     script+=$script_locals
-    script+="[ \$# -eq 0 ] && __bash_parse_die \"Usage: $top_level_cmd \$USAGE_TEXT_$sub_cmd_name\"; "
+    script+="[ \$# -eq 0 ] && __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; "
     script+="while getopts '$getopts_str' opt; do case \$opt in "
     script+=$getopts_case_body 
     script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
@@ -151,12 +179,14 @@ BAP_new_command() {
     local cmd_name=$1
 	
 	if ! __bash_parse_check_valid_bash_var_name "$cmd_name"; then
-        __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage\nYou must provide a valid bash variable name for parameter <new_command>\nOffending argument: '$cmd_name'"
+        __bash_parse_die "$0: line ${BASH_LINENO[0]}: must provide a valid Bash variable name for parameter <new_command>\nOffending argument: '$cmd_name'"
     fi
 
     # Just define this variable
     declare -gr __bash_parse_cmd_${cmd_name}=
     declare -g __bash_parse_cmd_${cmd_name}_top_level_cmd_name=
+    declare -g __bash_parse_cmd_${cmd_name}_opts_help_text=
+    declare -g __bash_parse_cmd_${cmd_name}_create_help_option=no
     eval "declare -g __bash_parse_cmd_${cmd_name}_opts=()"
 }
 
@@ -166,17 +196,31 @@ BAP_set_top_level_cmd_name() {
     local cmd_name=$1
     local top_level_cmd_name=$2
     
-    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" "$FUNCNAME"
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$FUNCNAME"
     
     eval "__bash_parse_cmd_${cmd_name}_top_level_cmd_name=\$top_level_cmd_name"
 }
 
 BAP_add_required_short_opt() {
-    [ $# -ne 3 ] && __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
-    __bash_parse_add_opt "$1" "$2" "$3" required "$FUNCNAME"
+    if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+        __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
+    fi
+    __bash_parse_add_opt "$@" required "$FUNCNAME"
 }
 
 BAP_add_optional_short_opt() {
-    [ $# -ne 3 ] && __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
-    __bash_parse_add_opt "$1" "$2" "$3" optional "$FUNCNAME"
+    if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+        __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
+    fi
+    __bash_parse_add_opt "$@" optional "$FUNCNAME"
+}
+
+BAP_create_help_option() {
+    local usage="Usage is '$FUNCNAME <command>'"
+    [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
+    local cmd_name=$1
+    
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$FUNCNAME"
+    
+    eval "__bash_parse_cmd_${cmd_name}_create_help_option=yes"
 }
