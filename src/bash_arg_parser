@@ -120,7 +120,7 @@ BAP_generate_parse_func() {
     if [ "$create_help_option" = yes ]; then
         usage_text+=" -h"
         getopts_str+='h'
-        getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\";; "
+        getopts_case_body+="h) echo \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; exit 0;; "
     fi
 
     for ((i = 0; i < ${#short_opt_array[@]}; i += 3)); do
@@ -153,6 +153,9 @@ BAP_generate_parse_func() {
                 ;;
         esac
     done
+
+    local we_have_non_help_arguments=yes
+    [ $i -eq 0 ] && we_have_non_help_arguments=no
 
     declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
     opts_help_test=${opts_help_text/ //}
@@ -194,10 +197,15 @@ EOM
     script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
     script+="parse_${sub_cmd_name}_args() { "
     script+=$script_locals
-    script+="[ \$# -eq 0 ] && __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; "
+
+    if [ "$we_have_non_help_arguments" = yes ]; then
+        script+="[ \$# -eq 0 ] && __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; "
+    fi
     script+="while getopts '$getopts_str' opt; do case \$opt in "
     script+=$getopts_case_body 
-    script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
+    if [ "$we_have_non_help_arguments" = yes ]; then
+        script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
+    fi
     script+="\\?) __bash_parse_die \"Unsupported option: -\$OPTARG\";; esac; done; "
     script+=$check_for_req_args_body
     script+="echo \"$eval_ret\"; "

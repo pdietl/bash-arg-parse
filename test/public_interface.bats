@@ -141,10 +141,19 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_add_required_short_opt() succeeds when called with valid arguments' {
+@test 'BAP_add_required_short_opt() succeeds when called with valid arguments without optional help text' {
     local cmd=foo
     BAP_new_command "$cmd"
     run BAP_add_required_short_opt "$cmd" b baz
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}
+
+@test 'BAP_add_required_short_opt() succeeds when called with valid arguments with optional help text' {
+    local cmd=foo
+    BAP_new_command "$cmd"
+    run BAP_add_required_short_opt "$cmd" b baz 'This is help text'
     pv output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 0 ]
@@ -212,10 +221,19 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_add_optional_short_opt() succeeds when called with valid arguments' {
+@test 'BAP_add_optional_short_opt() succeeds when called with valid arguments without optional help text' {
     local cmd=foo
     BAP_new_command "$cmd"
     run BAP_add_optional_short_opt "$cmd" b baz
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}
+
+@test 'BAP_add_optional_short_opt() succeeds when called with valid arguments with optional help text' {
+    local cmd=foo
+    BAP_new_command "$cmd"
+    run BAP_add_optional_short_opt "$cmd" b baz 'This is help text'
     pv output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 0 ]
@@ -252,7 +270,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ ${#lines[@]} -eq 0 ]
 }
 
-@test 'BAP_generage_parse_func when called correctly generates a properly named parser function' {
+@test 'BAP_generate_parse_func when called correctly generates a properly named parser function' {
     local cmd=foo
     BAP_new_command "$cmd"
     BAP_generate_parse_func "$cmd"
@@ -272,7 +290,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_create_help_option fails when BAP_new_command has not been called already'' {
+@test 'BAP_create_help_option fails when BAP_new_command has not been called already' {
     local cmd=foo
     local re="^.* must call 'BAP_new_command\(\)' first to define command '$cmd'$"
     run BAP_create_help_option "$cmd"
@@ -280,4 +298,13 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ "$status" -ne 0 ]
     [ ${#lines[@]} -eq 1 ]
     [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_create_help_option succeeds when called with a valid argument' {
+    local cmd=foo
+    BAP_new_command "$cmd"
+    run BAP_create_help_option "$cmd"
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
 }
