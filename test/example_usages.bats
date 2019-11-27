@@ -46,6 +46,21 @@ set -u
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = "Usage: $cmd -$opt_letter <$opt_name>" ]
 }
+@test 'A command is created with one required argument and fails with proper usage text when the corresponding option flag is provided as an argument, but there is no argument after the flag' {
+    local cmd=foo
+    local opt_letter=o
+    local opt_name=output_dir
+    BAP_new_command "$cmd"
+    BAP_add_required_short_opt "$cmd" "$opt_letter" "$opt_name"
+    BAP_generate_parse_func "$cmd"
+    
+    run parse_${cmd}_args -o
+    pv output cmd opt_letter opt_name
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 2 ]
+    [ "${lines[0]}" = "fatal: <$opt_name> required." ]
+    [ "${lines[1]}" = "Usage: $cmd -$opt_letter <$opt_name>" ]
+}
 
 @test 'A command is created with one required argument and succeeds when that argument is given' {
     local cmd=foo

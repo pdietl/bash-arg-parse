@@ -137,7 +137,7 @@ BAP_generate_parse_func() {
         getopts_case_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\";; "
 
         getopts_case_colon_body+="$opt_letter) "
-        getopts_case_colon_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\";; "
+        getopts_case_colon_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\";; "
 
         case "$opt_type" in
             required) 
@@ -202,9 +202,7 @@ EOM
     fi
     script+="while getopts '$getopts_str' opt; do case \$opt in "
     script+=$getopts_case_body 
-    if [ "$required_argument_given" = yes ]; then
-        script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
-    fi
+    script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
     script+="\\?) __bash_parse_die \"Unsupported option: -\$OPTARG\";; esac; done; "
     script+=$check_for_req_args_body
     script+="echo \"$eval_ret\"; "
