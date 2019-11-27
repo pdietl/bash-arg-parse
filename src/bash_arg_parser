@@ -160,6 +160,36 @@ BAP_generate_parse_func() {
         usage_text+=$'\n\nOptions:'$opts_help_text
     fi
 
+    # Now construct the usage text declaration, 
+    # the parser function definition,
+    # and the body of the function
+
+    # It'll look something like:
+
+    : << EOM
+    declare -r USAGE_TEXT_foo=...
+    parse_foo_args() {
+        local arg_a=
+        local arg_b=
+        while getopts ':a:b:' opt; do
+            case \$opt in
+                a)
+                    a=\$OPTARG
+                    make_sure_var_exists
+                ...
+                :)
+                    handle cases where no arg was given to an option
+        done
+
+        handle_making_sure_we_got_all_required_args
+    }
+EOM
+        
+    # Remeber that you can use the 'type' command
+    # in your program after calling 'BAP_generate_parser()'    # to have Bash pretty-print the resuling function
+    # if you are curious :)
+    # see examples/type_example
+
     script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
     script+="parse_${sub_cmd_name}_args() { "
     script+=$script_locals

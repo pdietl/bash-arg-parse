@@ -259,6 +259,25 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     type -t "parse_${cmd}_args"
 }
 
-#
-# BAP_create_help_option
-#
+##########################
+# BAP_create_help_option #
+##########################
+
+@test 'BAP_create_help_option fails when called with no arguments' {
+    local re="^.*: line 52: Usage is 'BAP_create_help_option <command>'$"
+    run BAP_create_help_option
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_create_help_option fails when BAP_new_command has not been called already'' {
+    local cmd=foo
+    local re="^.* must call 'BAP_new_command\(\)' first to define command '$cmd'$"
+    run BAP_create_help_option "$cmd"
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
