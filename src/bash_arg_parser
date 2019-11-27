@@ -65,7 +65,7 @@ __bash_parse_add_opt() {
     __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" "$funcname"
     __bash_parse_assert_short_opt "$opt_letter" "$funcname"
     if ! __bash_parse_check_valid_bash_var_name "$opt_name"; then
-        __bash_parse_die "$0: line ${BASH_LINENO[1]}: Usage: $funcname <cmd_name> <opt_letter> <opt_name>\nYou must provide a valid bash variable name for parameter <opt_name>\nOffending argument: '$opt_name'"
+        __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must provide a valid Bash variable name for parameter <opt_name>\nOffending argument: '$opt_name'"
         
     fi
     

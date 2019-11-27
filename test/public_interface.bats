@@ -3,6 +3,7 @@ load ../src/bash_arg_parser
 declare -gr new_command_usage_re="[^[:space:]]+ line 52: Usage is 'BAP_new_command <new_command>'$"
 declare -gr set_top_level_cmd_name_usage_re="[^[:space:]]+ line 52: Usage is 'BAP_set_top_level_cmd_name <command> <top level cmd name>'"
 declare -gr add_required_short_opt_re="[^[:space:]]+ line 52: Usage is 'BAP_add_required_short_opt <command> <opt_letter> <opt_name>'"
+declare -gr add_optional_short_opt_re="[^[:space:]]+ line 52: Usage is 'BAP_add_optional_short_opt <command> <opt_letter> <opt_name>'"
 
 pv() {
     for var_name; do
@@ -118,4 +119,92 @@ pv() {
     [ "$status" -ne 0 ]
     [ ${#lines[@]} -eq 2 ]
     [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_required_short_opt() fails when given an argument for <opt_name> which is not a valid Bash variable name' {
+    local cmd=foo
+    local not_a_bash_var_name='bar baz'
+    local re='.*: line 52: \(BAP_add_required_short_opt\) must provide a valid Bash variable name for parameter <opt_name>'$'\n'"Offending argument: '$not_a_bash_var_name'"
+    BAP_new_command "$cmd"
+    run BAP_add_required_short_opt "$cmd" q "$not_a_bash_var_name"
+    pv output
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 2 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_required_short_opt() succeeds when called with valid arguments' {
+    local cmd=foo
+    BAP_new_command "$cmd"
+    run BAP_add_required_short_opt "$cmd" b baz
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}
+
+@test 'BAP_add_optional_short_opt() fails when called with no arguments' {
+    run BAP_add_optional_short_opt
+    pv output add_optional_short_opt_re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $add_optional_short_opt_re ]]
+}
+
+@test 'BAP_add_optional_short_opt() fails when called with only one argument' {
+    run BAP_add_optional_short_opt 'foo'
+    pv output add_optional_short_opt_re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $add_optional_short_opt_re ]]
+}
+
+@test 'BAP_add_optional_short_opt() fails when called with only two arguments' {
+    run BAP_add_optional_short_opt 'foo' 'bar'
+    pv output add_optional_short_opt_re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $add_optional_short_opt_re ]]
+}
+
+@test 'BAP_add_optional_short_opt() fails when BAP_new_command has not been called already' {
+    local cmd=foo
+    local re=".* \(BAP_add_optional_short_opt\) must call 'BAP_new_command\(\)' first to define command '$cmd'$"
+    run BAP_add_optional_short_opt "$cmd" 'bar' 'baz'
+    pv output add_optional_short_opt_re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_optional_short_opt() fails when given an argument for <opt_letter> which is not only one character' {
+    local cmd=foo
+    local short_opt_letter=bar
+    local re='.*: line 52: \(BAP_add_optional_short_opt\) must only provide a single letter for the short opt letter argument!'$'\n'"Offending argument: '$short_opt_letter'"
+    BAP_new_command "$cmd"
+    run BAP_add_optional_short_opt "$cmd" "$short_opt_letter" 'baz'
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 2 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_optional_short_opt() fails when given an argument for <opt_name> which is not a valid Bash variable name' {
+    local cmd=foo
+    local not_a_bash_var_name='bar baz'
+    local re='.*: line 52: \(BAP_add_optional_short_opt\) must provide a valid Bash variable name for parameter <opt_name>'$'\n'"Offending argument: '$not_a_bash_var_name'"
+    BAP_new_command "$cmd"
+    run BAP_add_optional_short_opt "$cmd" q "$not_a_bash_var_name"
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 2 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_optional_short_opt() succeeds when called with valid arguments' {
+    local cmd=foo
+    BAP_new_command "$cmd"
+    run BAP_add_optional_short_opt "$cmd" b baz
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
 }
