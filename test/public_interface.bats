@@ -105,7 +105,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $add_required_short_opt_re ]]
 }
 
-@test 'BAP_add_required_short_opt() fails when BAP_new_command has not been called already'' {
+@test 'BAP_add_required_short_opt() fails when BAP_new_command has not been called already' {
     local cmd=foo
     local re=".* \(BAP_add_required_short_opt\) must call 'BAP_new_command\(\)' first to define command '$cmd'$"
     run BAP_set_top_level_cmd_name "$cmd" 'bar'

@@ -6,7 +6,7 @@ set -eu
 # Private functions #
 #####################
 
-declare -gr __bash_parse_add_short_opt_usage="Usage is '\$FUNCNAME <command> <opt_letter> <opt_name> [<help text>]'"
+declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name> [<help text>]'"
 
 __bash_parse_die() {
     echo -e "$@" >&2
@@ -72,7 +72,7 @@ __bash_parse_add_opt() {
         local opt_required_or_optional=$5
         local funcname=$6
     else
-        __bash_parse_die "INTERNAL ERROR! Wrong number of args passed to '$FUNCNAME'"
+        __bash_parse_die "INTERNAL ERROR! Wrong number of args passed to '${FUNCNAME[0]}'"
     fi
 
     __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$funcname"
@@ -97,7 +97,7 @@ BAP_generate_parse_func() {
     [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: Usage is 'BAP_generate_parse_func <command>'"
     local name_of_command=$1
 
-    __bash_parse_assert_defined "__bash_parse_cmd_$name_of_command" 'BAP_new_command()' "$FUNCNAME"
+    __bash_parse_assert_defined "__bash_parse_cmd_$name_of_command" 'BAP_new_command()' "${FUNCNAME[0]}"
 
     local sub_cmd_name=$name_of_command
     local script=""
@@ -124,6 +124,8 @@ BAP_generate_parse_func() {
         getopts_case_body+="h) echo \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; exit 0;; "
     fi
 
+    # Var is set in eval
+    # shellcheck disable=SC2154
     for ((i = 0; i < ${#short_opt_array[@]}; i += 3)); do
         local opt_letter=${short_opt_array[i]}
         local opt_text=${short_opt_array[i + 1]}
@@ -151,13 +153,13 @@ BAP_generate_parse_func() {
                 usage_text+=" [-$opt_letter <$opt_text>]"
                 ;;
             *)
-                __bash_parse_die "INTERNAL ERROR: ($FUNCNAME) invalid opt_type of '$opt_type'"
+                __bash_parse_die "INTERNAL ERROR: (${FUNCNAME[0]}) invalid opt_type of '$opt_type'"
                 ;;
         esac
     done
 
     declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
-    opts_help_test=${opts_help_text/ //}
+    opts_help_text=${opts_help_text/ //}
     if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
         usage_text+=$'\n\nOptions:'$opts_help_text
     fi
@@ -212,7 +214,7 @@ EOM
 }
 
 BAP_new_command() {
-    local usage="Usage is '$FUNCNAME <new_command>'"
+    local usage="Usage is '${FUNCNAME[0]} <new_command>'"
     [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local cmd_name=$1
 	
@@ -221,44 +223,46 @@ BAP_new_command() {
     fi
 
     # Just define this variable
-    declare -gr __bash_parse_cmd_${cmd_name}=
-    declare -g __bash_parse_cmd_${cmd_name}_top_level_cmd_name=
-    declare -g __bash_parse_cmd_${cmd_name}_opts_help_text=
-    declare -g __bash_parse_cmd_${cmd_name}_create_help_option=no
+    declare -gr __bash_parse_cmd_"${cmd_name}"=
+    declare -g __bash_parse_cmd_"${cmd_name}"_top_level_cmd_name=
+    declare -g __bash_parse_cmd_"${cmd_name}"_opts_help_text=
+    declare -g __bash_parse_cmd_"${cmd_name}"_create_help_option=no
     eval "declare -g __bash_parse_cmd_${cmd_name}_opts=()"
 }
 
 BAP_set_top_level_cmd_name() {
-    local usage="Usage is '$FUNCNAME <command> <top level cmd name>'"
+    local usage="Usage is '${FUNCNAME[0]} <command> <top level cmd name>'"
     [ $# -ne 2 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local cmd_name=$1
+    # Var is used in eval
+    # shellcheck disable=SC2034
     local top_level_cmd_name=$2
     
-    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$FUNCNAME"
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "${FUNCNAME[0]}"
     
     eval "__bash_parse_cmd_${cmd_name}_top_level_cmd_name=\$top_level_cmd_name"
 }
 
 BAP_add_required_short_opt() {
     if [ $# -ne 3 ] && [ $# -ne 4 ]; then
-        __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
+        __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")"
     fi
-    __bash_parse_add_opt "$@" required "$FUNCNAME"
+    __bash_parse_add_opt "$@" required "${FUNCNAME[0]}"
 }
 
 BAP_add_optional_short_opt() {
     if [ $# -ne 3 ] && [ $# -ne 4 ]; then
-        __bash_parse_die $(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")
+        __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")"
     fi
-    __bash_parse_add_opt "$@" optional "$FUNCNAME"
+    __bash_parse_add_opt "$@" optional "${FUNCNAME[0]}"
 }
 
 BAP_create_help_option() {
-    local usage="Usage is '$FUNCNAME <command>'"
+    local usage="Usage is '${FUNCNAME[0]} <command>'"
     [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local cmd_name=$1
     
-    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$FUNCNAME"
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "${FUNCNAME[0]}"
     
     eval "__bash_parse_cmd_${cmd_name}_create_help_option=yes"
 }

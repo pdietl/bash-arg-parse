@@ -1,4 +1,4 @@
-DOCKER_IMAGE_VER := 1
+DOCKER_IMAGE_VER := 2
 DOCKER_IMAGE_TAG := pdietl/ubuntu18.04_base:$(DOCKER_IMAGE_VER)
 
 vol_mnt    = -v $(1):$(1)
@@ -18,6 +18,7 @@ DOCKER_ARGS += $(DOCKER_IMAGE_TAG)
 .PHONY: $(addprefix docker-,build publish shell) test
 
 test:
+	shellcheck $(sort $(wildcard src/* test/*))
 	bats test/
 
 docker-shell:
