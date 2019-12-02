@@ -1,4 +1,4 @@
-DOCKER_IMAGE_VER := 2
+DOCKER_IMAGE_VER := 3
 DOCKER_IMAGE_TAG := pdietl/ubuntu18.04_base:$(DOCKER_IMAGE_VER)
 
 vol_mnt    = -v $(1):$(1)

@@ -308,3 +308,62 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 0 ]
 }
+
+########################
+# BAP_set_opt_arg_type #
+########################
+
+@test 'BAP_set_opt_arg_type fails when called with no arguments' {
+    local re="^.*: line 52: Usage is 'BAP_set_opt_arg_type <command> <opt_name> <opt_arg_type>'$"
+    run BAP_set_opt_arg_type
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_set_opt_arg_type fails when BAP_new_command has not been called already' {
+    local cmd=foo
+    local re="^.* must call 'BAP_new_command\(\)' first to define command '$cmd'$"
+    run BAP_set_opt_arg_type "$cmd" 'bar' 'baz'
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_set_opt_arg_type fails when BAP_add_optional_short_opt or BAP_add_required_short_opt() has not been called already' {
+    local cmd=foo
+    local opt=bar
+    local re="^.* must call 'BAP_add_optional_short_opt\(\)' or 'BAP_add_required_short_opt\(\)' to define option '$opt'$"
+    BAP_new_command "$cmd"
+    run BAP_set_opt_arg_type "$cmd" "$opt" 'baz'
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_set_opt_arg_type succeeds when called with valid arguments' {
+    local cmd=foo
+    local opt=bar
+    BAP_new_command "$cmd"
+    BAP_add_optional_short_opt "$cmd" 'b' "$opt"
+    run BAP_set_opt_arg_type "$cmd" "$opt" existent_file
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}
+
+@test 'BAP_set_opt_arg_type fails when called with an invalid opt type' {
+    local cmd=foo
+    local opt=bar
+    local re=".* opt arg type must be one of: \[existent_file\]$"
+    BAP_new_command "$cmd"
+    BAP_add_optional_short_opt "$cmd" 'b' "$opt"
+    run BAP_set_opt_arg_type "$cmd" "$opt" garbage
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}

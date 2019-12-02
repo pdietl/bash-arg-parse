@@ -21,6 +21,14 @@ __bash_parse_die_required_arg() {
     __bash_parse_die "Usage: $usage_text"
 }
 
+__bash_parse_die_file_must_exist() {
+    local file_name=$1
+    local usage_text=$2
+
+    echo "fatal: file '$file_name' does not exist." >&2
+    __bash_parse_die "Usage: $usage_text"
+}
+
 __bash_parse_check_opt_arg() {
     local arg=${1}
 
@@ -83,10 +91,41 @@ __bash_parse_add_opt() {
     
     opt_letter=$(printf "%q" "$opt_letter")
 
-    eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional)"
+    eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional none)"
 
     [ -n "$help_text" ] && eval "__bash_parse_cmd_${cmd_name}_opts_help_text+="'"'$'\n''  -$opt_letter      $help_text"'
     true
+}
+
+__bash_opt_is_defined() {
+    local cmd_name=$1
+    local opt_name=$2
+
+    eval "declare -n short_opt_array=__bash_parse_cmd_${cmd_name}_opts"
+    # Var is set in eval
+    # shellcheck disable=SC2154
+    for ((i = 0; i < ${#short_opt_array[@]}; i += 4)); do
+        local opt_text=${short_opt_array[i + 1]}
+        [ "$opt_text" = "$opt_name" ] && return 0
+    done
+    return 1
+}
+
+__bash_opt_set_arg_type() {
+    local cmd_name=$1
+    local opt_name=$2
+    local opt_arg_type=$3
+
+    eval "declare -n short_opt_array=__bash_parse_cmd_${cmd_name}_opts"
+    # Var is set in eval
+    # shellcheck disable=SC2154
+    for ((i = 0; i < ${#short_opt_array[@]}; i += 4)); do
+        local opt_text=${short_opt_array[i + 1]}
+        if [ "$opt_text" = "$opt_name" ]; then
+            short_opt_array[i + 3]=$opt_arg_type
+            return
+        fi
+    done
 }
 
 ##############
@@ -107,6 +146,7 @@ BAP_generate_parse_func() {
     local getopts_case_body=""
     local getopts_case_colon_body=""
     local check_for_req_args_body=""
+    local check_opt_arg_type=""
     local usage_text="$sub_cmd_name"
     local required_argument_given=no
     
@@ -126,10 +166,11 @@ BAP_generate_parse_func() {
 
     # Var is set in eval
     # shellcheck disable=SC2154
-    for ((i = 0; i < ${#short_opt_array[@]}; i += 3)); do
+    for ((i = 0; i < ${#short_opt_array[@]}; i += 4)); do
         local opt_letter=${short_opt_array[i]}
         local opt_text=${short_opt_array[i + 1]}
         local opt_type=${short_opt_array[i + 2]}
+        local opt_arg_type=${short_opt_array[i + 3]}
         
         script_locals+="local __var_$opt_text=; "
         eval_ret+="local $opt_text=\$__var_$opt_text; "
@@ -147,13 +188,29 @@ BAP_generate_parse_func() {
                 usage_text+=" -$opt_letter <$opt_text>"
 
                 check_for_req_args_body+="[ -z \"\$__var_$opt_text\" ] && "
-                check_for_req_args_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\"; "
+                check_for_req_args_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; "
                 ;;
             optional)
                 usage_text+=" [-$opt_letter <$opt_text>]"
                 ;;
             *)
                 __bash_parse_die "INTERNAL ERROR: (${FUNCNAME[0]}) invalid opt_type of '$opt_type'"
+                ;;
+        esac
+        case "$opt_arg_type" in
+            none)
+                ;;
+            existent_file)
+                if [ "$opt_type" = optional ]; then
+                    check_opt_arg_type+="if [ -n \"\$__var_$opt_text\" ]; then [ -e \"\$__var_$opt_text\" ] || "
+                    check_opt_arg_type+="__bash_parse_die_file_must_exist \"\$__var_$opt_text\" \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; fi; "
+                else
+                    check_opt_arg_type+="[ -e \"\$__var_$opt_text\" ] || "
+                    check_opt_arg_type+="__bash_parse_die_file_must_exist \"\$__var_$opt_text\" \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; "
+                fi
+                ;;
+            *)
+                __bash_parse_die "INTERNAL ERROR: (${FUNCNAME[0]}) invalid opt_type of '$opt_arg_type'"
                 ;;
         esac
     done
@@ -207,6 +264,7 @@ EOM
     script+=":) case \$OPTARG in $getopts_case_colon_body esac;; "
     script+="\\?) __bash_parse_die \"Unsupported option: -\$OPTARG\";; esac; done; "
     script+=$check_for_req_args_body
+    script+=$check_opt_arg_type
     script+="echo \"$eval_ret\"; "
     script+="}"
 
@@ -255,6 +313,34 @@ BAP_add_optional_short_opt() {
         __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")"
     fi
     __bash_parse_add_opt "$@" optional "${FUNCNAME[0]}"
+}
+
+BAP_set_opt_arg_type() {
+    if [ $# -ne 3 ]; then
+        __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: Usage is 'BAP_set_opt_arg_type <command> <opt_name> <opt_arg_type>'\"")"
+    fi
+
+    local cmd_name=$1
+    local opt_text=$2
+    local opt_arg_type=$3
+
+    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "${FUNCNAME[0]}"
+
+    eval "declare -n short_opt_array=__bash_parse_cmd_${cmd_name}_opts"
+
+    __bash_opt_is_defined "$cmd_name" "$opt_text" || \
+        __bash_parse_die "$0: line ${BASH_LINENO[0]}: must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_text'"
+
+    case "$opt_arg_type" in
+        existent_file)
+            ;;
+        *)
+            __bash_parse_die "$0: line ${BASH_LINENO[0]}: opt arg type must be one of: [existent_file]"
+            ;;
+    esac
+
+    __bash_opt_set_arg_type "$cmd_name" "$opt_text" "$opt_arg_type"
+
 }
 
 BAP_create_help_option() {
