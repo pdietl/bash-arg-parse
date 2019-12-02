@@ -152,7 +152,6 @@ BAP_generate_parse_func() {
     
     declare -n create_help_option="__bash_parse_cmd_${name_of_command}_create_help_option"
 
-
     eval "local top_level_cmd=\"\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name \""
     [ "$top_level_cmd" = " " ] && top_level_cmd=
 
@@ -161,7 +160,7 @@ BAP_generate_parse_func() {
     if [ "$create_help_option" = yes ]; then
         usage_text+=" -h"
         getopts_str+='h'
-        getopts_case_body+="h) echo \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; exit 0;; "
+        getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; ;; "
     fi
 
     # Var is set in eval
@@ -173,7 +172,7 @@ BAP_generate_parse_func() {
         local opt_arg_type=${short_opt_array[i + 3]}
         
         script_locals+="local __var_$opt_text=; "
-        eval_ret+="local $opt_text=\$__var_$opt_text; "
+        eval_ret+="local $opt_text='\$__var_$opt_text'; "
         getopts_str+="$opt_letter:"
         getopts_case_body+="$opt_letter) __var_$opt_text=\$OPTARG; "
         getopts_case_body+="__bash_parse_check_opt_arg \"\$__var_$opt_text\" || "
@@ -215,12 +214,6 @@ BAP_generate_parse_func() {
         esac
     done
 
-    declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
-    opts_help_text=${opts_help_text/ //}
-    if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
-        usage_text+=$'\n\nOptions:'$opts_help_text
-    fi
-
     # Now construct the usage text declaration, 
     # the parser function definition,
     # and the body of the function
@@ -252,7 +245,15 @@ EOM
     # if you are curious :)
     # see examples/type_example
 
+    eval_ret+="shift \$((OPTIND - 1)); "
+    
     script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
+
+    declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
+    if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
+        script+="declare -gr OPT_USAGE_TEXT_$sub_cmd_name=\"$opts_help_text\"; "
+    fi
+
     script+="parse_${sub_cmd_name}_args() { "
     script+=$script_locals
 

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+. ../src/bash_arg_parser
+
+BAP_new_command 'greet'
+BAP_add_optional_short_opt 'greet' 'w' 'whom'
+BAP_create_help_option 'greet'
+BAP_generate_parse_func 'greet'
+
+greet() {
+    local get_args
+    get_args=$(parse_greet_args "$@") || exit
+    eval "$get_args"
+ 
+    echo "Hello, ${whom:-you}!"
+}
+
+greet "$@"
