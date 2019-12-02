@@ -24,7 +24,7 @@ The basic theory of operation is that one calls the various command to construct
 
 # Restrictions on Public API Function Arguments
 - `command` and `opt_name` must be valid Bash variable names
-- `opt_arg_type` is only `exsistent_file` as of now. This creates a check that a provided argument is a file that exists
+- `opt_arg_type` is only `existent_file` as of now. This creates a check that a provided argument is a file that exists
 
 # Examples
 
@@ -142,7 +142,11 @@ santa() {
     eval "$get_args"
     
     if [ -z "$whom" ]; then
-        echo "Santa is sad and alone since there is noone to greet. You are a monster."
+        echo "Santa is sad and alone since there is noohint: See the 'Note about fast-forwards' in 'git push --help' for details.
+~/git/other/bash-arg-parse$ git rebase origin/master
+First, rewinding head to replay your work on top of it...
+Applying: updates
+ne to greet. You are a monster."
     else
         echo "Santa put $whom on his naughty list!"
     fi
