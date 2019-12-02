@@ -20,7 +20,7 @@ The basic theory of operation is that one calls the various command to construct
 
 # Examples
 
-## greet1
+## greet_req_arg
 ### Program Listing
 ```bash
 #!/bin/bash
@@ -50,4 +50,42 @@ fatal: <whom> required.
 Usage: greet -w <whom>
 $ ./greet1 -w Pete
 Hello, Pete!
+```
+
+## greet_opt_arg_and_help
+### Program Listing
+```bash
+#!/bin/bash
+
+. ../src/bash_arg_parser
+
+BAP_new_command 'greet'
+BAP_add_optional_short_opt 'greet' 'w' 'whom'
+BAP_create_help_option 'greet'
+BAP_generate_parse_func 'greet'
+
+greet() {
+    local get_args
+    get_args=$(parse_greet_args "$@") || exit
+    eval "$get_args"
+ 
+    echo "Hello, ${whom:-you}!"
+}
+
+greet "$@"
+
+```
+### Example Program Interaction
+```bash
+$ ./greet_opt_arg_and_help 
+Hello, you!
+$ ./greet_opt_arg_and_help -h
+Usage: greet -h [-w <whom>]
+$ ./greet_opt_arg_and_help -h -w
+Usage: greet -h [-w <whom>]
+$ ./greet_opt_arg_and_help -w
+fatal: <whom> required.
+Usage: greet -h [-w <whom>]
+$ ./greet_opt_arg_and_help -w 'Mr. Foo Bar'
+Hello, Mr. Foo Bar!
 ```
