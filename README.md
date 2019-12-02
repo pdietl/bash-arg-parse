@@ -143,10 +143,6 @@ santa() {
     
     if [ -z "$whom" ]; then
         echo "Santa is sad and alone since there is noohint: See the 'Note about fast-forwards' in 'git push --help' for details.
-~/git/other/bash-arg-parse$ git rebase origin/master
-First, rewinding head to replay your work on top of it...
-Applying: updates
-ne to greet. You are a monster."
     else
         echo "Santa put $whom on his naughty list!"
     fi
