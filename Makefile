@@ -30,10 +30,15 @@ docker-build:
 docker-publish:
 	docker push $(DOCKER_IMAGE_TAG)
 
-.docker_built: Dockerfile
+Dockerfile: Dockerfile.md5
 	$(MAKE) docker-build
 	touch $@
 
+%.md5: FORCE
+	@$(if $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $*)),md5sum $* > $@)
+
+FORCE:
+
 # Don't change `make` to `$(MAKE)` -- this will break MacOS support
-docker-%: .docker_built
+docker-%: Dockerfile
 	docker run $(DOCKER_ARGS) $(notdir $(MAKE)) $* $(MAKEFLAGS)

@@ -13,7 +13,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
         xz-utils
 
 ARG BATS_VERSION=1.1.0
-RUN wget https://github.com/bats-core/bats-core/archive/v${BATS_VERSION}.tar.gz && \
+RUN wget -nv https://github.com/bats-core/bats-core/archive/v${BATS_VERSION}.tar.gz && \
     tar xf v${BATS_VERSION}.tar.gz && \
     pushd bats-core-${BATS_VERSION} && \
     ./install.sh /usr/local && \
@@ -22,7 +22,7 @@ RUN wget https://github.com/bats-core/bats-core/archive/v${BATS_VERSION}.tar.gz 
     rm v${BATS_VERSION}.tar.gz
 
 ARG SHELLCHECK_VERSION=0.7.0
-RUN wget https://storage.googleapis.com/shellcheck/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
+RUN wget -nv https://storage.googleapis.com/shellcheck/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
    tar xf shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
    install -Dt /usr/local/bin shellcheck-v${SHELLCHECK_VERSION}/shellcheck && \
    rm -r shellcheck-v${SHELLCHECK_VERSION} && \
