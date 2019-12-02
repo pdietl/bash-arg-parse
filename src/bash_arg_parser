@@ -252,6 +252,8 @@ EOM
     declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
     if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
         script+="declare -gr OPT_USAGE_TEXT_$sub_cmd_name=\"$opts_help_text\"; "
+    else
+        script+="declare -gr OPT_USAGE_TEXT_$sub_cmd_name=;"
     fi
 
     script+="parse_${sub_cmd_name}_args() { "
@@ -297,9 +299,55 @@ BAP_set_top_level_cmd_name() {
     # shellcheck disable=SC2034
     local top_level_cmd_name=$2
     
+    local top_level_cmd_name_hash
+    
     __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "${FUNCNAME[0]}"
     
     eval "__bash_parse_cmd_${cmd_name}_top_level_cmd_name=\$top_level_cmd_name"
+
+    # We need to hash the name to create a valid Bash variable name in case of invalid characters
+    top_level_cmd_name_hash="$(md5sum <<< "$top_level_cmd_name" | awk '{print $1}')"
+
+    eval "__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands+=(\$cmd_name)"
+}
+
+BAP_generate_top_level_cmd_parser() {
+    local usage="Usage is '${FUNCNAME[0]} <top level cmd name>"
+    [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
+    local top_level_cmd_name=$1
+
+    local top_level_cmd_name_hash
+
+    top_level_cmd_name_hash="$(md5sum <<< "$top_level_cmd_name" | awk '{print $1}')"
+
+    if ! [ -v "__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands" ]; then
+        __bash_parse_die  "$0: line ${BASH_LINENO[0]}: must call 'BAP_set_top_level_cmd_name()' with a second argument of '$top_level_cmd_name' first!"
+    fi
+
+    local script=
+    local help_text=
+    local case_body=
+    local opt_help_text=Options:
+
+    declare -n sub_cmd_array="__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands"
+    for sub_cmd in "${sub_cmd_array[@]}"; do
+        if ! [ -v "USAGE_TEXT_$sub_cmd" ]; then
+            __bash_parse_die  "$0: line ${BASH_LINENO[0]}: must call 'BAP_generate_parse_func()' with a second argument of '$sub_cmd' first!"
+        fi
+        eval "help_text+=\"  $top_level_cmd_name \$USAGE_TEXT_${sub_cmd}\"$'\n'"
+        eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
+        case_body+="$sub_cmd) shift; $sub_cmd \"\$@\";; "
+    done
+
+    help_text=$help_text$'\n'$opt_help_text
+    case_body+="*) echo '$help_text' && exit 1"
+
+    script+="parse_top_level_args() { "
+    script+="[ \$# -eq 0 ] && echo $'Usage:\n$help_text' && exit 1;"
+    script+="case \"\$1\" in $case_body esac"
+    script+=" }"
+    echo "$script"
+    eval "$script"
 }
 
 BAP_add_required_short_opt() {
