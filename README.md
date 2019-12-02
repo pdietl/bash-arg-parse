@@ -22,6 +22,10 @@ Some global variables are created for help text and opt help text:
 
 The basic theory of operation is that one calls the various command to construct a command or subcommand to receive arguments. After this, one calls `BAP_generate_parse_func command_name`, which results in a new function coming into existence with the name `parse_new_command_args`. One then calls this function and captures the output. Calling `eval` on the captured output will result in local variables corresponding to the chosen optional and required arguments being set.
 
+# Restrictions on Public API Function Arguments
+- `command` and `opt_name` must be valid Bash variable names
+- `opt_arg_type` is only `exsistent_file` as of now. This creates a check that a provided argument is a file that exists
+
 # Examples
 
 ## greet_req_arg
