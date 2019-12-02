@@ -16,7 +16,7 @@ Public API:
 
 Some global variables are created for help text and opt help text:
 - `$USAGE_TEXT_<command>`
-- `OPT_USAGE_TEXT_<command>`
+- `$OPT_USAGE_TEXT_<command>`
 
 # Usage
 
