@@ -73,7 +73,6 @@ greet() {
 }
 
 greet "$@"
-
 ```
 ### Example Program Interaction
 ```bash
@@ -88,4 +87,111 @@ fatal: <whom> required.
 Usage: greet -h [-w <whom>]
 $ ./greet_opt_arg_and_help -w 'Mr. Foo Bar'
 Hello, Mr. Foo Bar!
+```
+
+## greet_sub_commands
+### Program Listing
+```bash
+#!/bin/bash
+
+set -u
+
+. ../src/bash_arg_parser
+
+BAP_new_command 'santa'
+BAP_set_top_level_cmd_name 'santa' 'greet'
+BAP_add_optional_short_opt 'santa' 'w' 'whom' 'The person whom santa should greet.'
+BAP_create_help_option 'santa'
+BAP_generate_parse_func 'santa'
+
+BAP_new_command 'mom'
+BAP_set_top_level_cmd_name 'mom' 'greet'
+BAP_add_required_short_opt 'mom' 'w' 'whom'
+BAP_create_help_option 'mom'
+BAP_generate_parse_func 'mom'
+
+declare -gr GLOBAL_USAGE_TEXT=$(cat <<EOM
+Usage:
+  greet $USAGE_TEXT_santa
+  greet $USAGE_TEXT_mom
+
+Options:$OPT_USAGE_TEXT_santa
+EOM
+)
+
+mom() {
+    local get_args
+    get_args=$(parse_mom_args "$@") || exit
+    eval "$get_args"
+ 
+    echo "Mom loves you, ${whom}!"
+    echo "Remaining arguments: $@"
+}
+
+santa() {
+    local get_args
+    get_args=$(parse_santa_args "$@") || exit
+    eval "$get_args"
+    
+    if [ -z "$whom" ]; then
+        echo "Santa is sad and alone since there is noone to greet. You are a monster."
+    else
+        echo "Santa put $whom on his naughty list!"
+    fi
+
+    echo "Remaining arguments: $@"
+}
+
+[ $# -eq 0 ] && echo "$GLOBAL_USAGE_TEXT" && exit 1
+
+case "$1" in
+    mom)
+        shift
+        mom "$@"
+        ;;
+    santa)
+        shift
+        santa "$@"
+        ;;
+    *)
+        echo "$GLOBAL_USAGE_TEXT" && exit 1
+        ;;
+esac
+```
+### Example Program Interaction
+```bash
+$ ./greet_sub_commands 
+Usage:
+  greet santa -h [-w <whom>]
+  greet mom -h -w <whom>
+
+Options:
+  -w      The person whom santa should greet.
+$ ./greet_sub_commands  santa
+Santa is sad and alone since there is noone to greet. You are a monster.
+Remaining arguments: 
+$ ./greet_sub_commands santa -w
+fatal: <whom> required.
+Usage: greet santa -h [-w <whom>]
+$ ./greet_sub_commands santa -w 'you mom'
+Santa put you mom on his naughty list!
+Remaining arguments: 
+$ ./greet_sub_commands santa -h
+Usage: greet santa -h [-w <whom>]
+$ ./greet_sub_commands santa -w 'you mama' foo bar
+Santa put you mama on his naughty list!
+Remaining arguments: foo bar
+$ ./greet_sub_commands mom
+Usage: greet mom -h -w <whom>
+$ ./greet_sub_commands mom -h
+Usage: greet mom -h -w <whom>
+$ ./greet_sub_commands mom -w mom
+Mom loves you, mom!
+Remaining arguments: 
+$ ./greet_sub_commands mom -w mom foo bar bax
+Mom loves you, mom!
+Remaining arguments: foo bar bax
+$ ./greet_sub_commands mom -w 'Pete Pete'
+Mom loves you, Pete Pete!
+Remaining arguments: 
 ```
