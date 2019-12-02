@@ -14,6 +14,10 @@ Public API:
 - `BAP_create_help_option(command)`
 - `BAP_generate_parse_func(command)`
 
+Some global variables are created for help text and opt help text:
+- `$USAGE_TEXT_<command>`
+- `OPT_USAGE_TEXT_<command>`
+
 # Usage
 
 The basic theory of operation is that one calls the various command to construct a command or subcommand to receive arguments. After this, one calls `BAP_generate_parse_func command_name`, which results in a new function coming into existence with the name `parse_new_command_args`. One then calls this function and captures the output. Calling `eval` on the captured output will result in local variables corresponding to the chosen optional and required arguments being set.
