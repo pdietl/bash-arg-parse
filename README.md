@@ -13,6 +13,7 @@ Public API:
 - `BAP_set_opt_arg_type(command, opt_name, opt_arg_type)`
 - `BAP_create_help_option(command)`
 - `BAP_generate_parse_func(command)`
+- `BAP_generate_top_level_cmd_parser(top_level_cmd_name)`
 
 Some global variables are created for help text and opt help text:
 - `$USAGE_TEXT_<command>`
@@ -25,6 +26,24 @@ The basic theory of operation is that one calls the various command to construct
 # Restrictions on Public API Function Arguments
 - `command` and `opt_name` must be valid Bash variable names
 - `opt_arg_type` is only `existent_file` as of now. This creates a check that a provided argument is a file that exists
+
+# Function Docs
+- `BAP_new_command(new_command)`: must be the first in a series of calls to the other functions. This function sets up various internal data structures.
+
+- `BAP_set_top_level_cmd_name(command, top_level_cmd_name)`: Adds a top-level name to a command. For instance, if you make sub commands `foo`, `bar`, and `baz` and you want them all to be sub commands of `qux`, you would use this function. The result will be usage text which prefixes the top-level command to the sub commands. like so: `Usage: qux foo`.
+
+- `BAP_add_required_short_opt(command, opt_letter, opt_name [, help_text])`: This function adds a new non-optional short option to a given command. The `opt_letter` is the letter of the short option and the `opt_name` is the text that will describe the argument of the short option. Exmaple: given a command foo where you want to add a short option of `-c <config>`: `BAP_add_required_short_opt foo c config`. Additionally, one may provide an optional help text to further describe what is expected of the option argument. This will be generated in the global variable `OPT_USAGE_TEXT_<command>`.
+
+- `BAP_add_optional_short_opt(command, opt_letter, opt_name [, help_text])`: Same usage as `BAP_add_required_short_opt(command, opt_letter, opt_name [, help_text])`, but the option is not required.
+
+- `BAP_set_opt_arg_type(command, opt_name, opt_arg_type)`: This function is used to enforce restrictions upon option arguments. The only type option currently is `existent_file`, which requires that the option argument provided is a file which exists.
+
+- `BAP_create_help_option(command)`: This function adds a `-h` option to the givne command which will display the usage text. This function is also required to be called in order for any option help text to be displayed.
+
+- `BAP_generate_parse_func(command)`: When one is all done setting up parameters for a command, one should call this function to generate a new function which will parse the arguments. Given an argument of `foo` for parameter `command`, a function named `parse_foo_args` will be produced. This new function will return a string which when `eval-ed` will insert local varaibles corrsponding to option names into the current function.
+
+- `BAP_generate_top_level_cmd_parser(top_level_cmd_name)`: This command will automatically generate a parser which will delegate to sub parser handling functions for each sub command. See examples.
+
 
 # Examples
 
