@@ -312,7 +312,7 @@ BAP_set_top_level_cmd_name() {
 }
 
 BAP_generate_top_level_cmd_parser() {
-    local usage="Usage is '${FUNCNAME[0]} <top level cmd name>"
+    local usage="Usage is '${FUNCNAME[0]} <top_level_cmd_name>'"
     [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local top_level_cmd_name=$1
 
@@ -321,7 +321,7 @@ BAP_generate_top_level_cmd_parser() {
     top_level_cmd_name_hash="$(md5sum <<< "$top_level_cmd_name" | awk '{print $1}')"
 
     if ! [ -v "__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands" ]; then
-        __bash_parse_die  "$0: line ${BASH_LINENO[0]}: must call 'BAP_set_top_level_cmd_name()' with a second argument of '$top_level_cmd_name' first!"
+        __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must call 'BAP_set_top_level_cmd_name()' with a second argument of '$top_level_cmd_name' first!"
     fi
 
     local script=
@@ -332,7 +332,10 @@ BAP_generate_top_level_cmd_parser() {
     declare -n sub_cmd_array="__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands"
     for sub_cmd in "${sub_cmd_array[@]}"; do
         if ! [ -v "USAGE_TEXT_$sub_cmd" ]; then
-            __bash_parse_die  "$0: line ${BASH_LINENO[0]}: must call 'BAP_generate_parse_func()' with a second argument of '$sub_cmd' first!"
+            __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must call 'BAP_generate_parse_func()' with an argument of '$sub_cmd' first!"
+        fi
+            if ! type -t "$sub_cmd" > /dev/null; then
+            __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must define function(s) with name(s) corresponding to each sub command. So far we know that you have not defined the function '$sub_cmd'"
         fi
         eval "help_text+=\"  $top_level_cmd_name \$USAGE_TEXT_${sub_cmd}\"$'\n'"
         eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
@@ -365,7 +368,7 @@ BAP_add_optional_short_opt() {
 
 BAP_set_opt_arg_type() {
     if [ $# -ne 3 ]; then
-        __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: Usage is 'BAP_set_opt_arg_type <command> <opt_name> <opt_arg_type>'\"")"
+        __bash_parse_die "$0: line ${BASH_LINENO[0]}: Usage is '${FUNCNAME[0]} <command> <opt_name> <opt_arg_type>'"
     fi
 
     local cmd_name=$1

@@ -367,3 +367,70 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ ${#lines[@]} -eq 1 ]
     [[ "$output" =~ $re ]]
 }
+
+#####################################
+# BAP_generate_top_level_cmd_parser #
+#####################################
+
+@test 'BAP_generate_top_level_cmd_parser fails when called with no arguments' {
+    local re="^.*: line 52: Usage is 'BAP_generate_top_level_cmd_parser <top_level_cmd_name>'$"
+    run BAP_generate_top_level_cmd_parser
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_generate_top_level_cmd_parser fails when called with an argument of a top-level command which has not yet been created with a call to BAP_set_top_level_cmd_name()' {
+    local top_level_cmd=foo
+    local re="^.*: line 52: \(BAP_generate_top_level_cmd_parser\) must call 'BAP_set_top_level_cmd_name\(\)' with a second argument of '$top_level_cmd' first!$"
+    run BAP_generate_top_level_cmd_parser "$top_level_cmd"
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+
+}
+
+@test 'BAP_generate_top_level_cmd_parser fails when called with a top-level command associated with a sub command which has not yet had BAP_generate_parse_func called on it' {
+    local cmd=bar
+    local top_level_cmd=foo
+    local re="^.*: line 52: \(BAP_generate_top_level_cmd_parser\) must call 'BAP_generate_parse_func\(\)' with an argument of 'bar' first!$"
+
+    BAP_new_command "$cmd"
+    BAP_set_top_level_cmd_name "$cmd" "$top_level_cmd"
+    run BAP_generate_top_level_cmd_parser "$top_level_cmd"
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_generate_top_level_cmd_parser is called with a valid argument, but no function with the same name of a command with the given top-level command is defined' {
+    local cmd=bar
+    local top_level_cmd=foo
+    local re=".*: line 52: \(BAP_generate_top_level_cmd_parser\) must define function\(s\) with name\(s\) corresponding to each sub command. So far we know that you have not defined the function 'bar'$"
+
+    BAP_new_command "$cmd"
+    BAP_set_top_level_cmd_name "$cmd" "$top_level_cmd"
+    BAP_generate_parse_func "$cmd"
+    run BAP_generate_top_level_cmd_parser "$top_level_cmd"
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_generate_top_level_cmd_parser succeeds when called with valid arguments and with the proper funtions having been previously called' {
+    local cmd=bar
+    local top_level_cmd=foo
+
+    BAP_new_command "$cmd"
+    BAP_set_top_level_cmd_name "$cmd" "$top_level_cmd"
+    BAP_generate_parse_func "$cmd"
+    eval "$cmd() { :; }"
+    run BAP_generate_top_level_cmd_parser "$top_level_cmd"
+    pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}

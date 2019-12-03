@@ -14,7 +14,7 @@ BAP_set_top_level_cmd_name 'sign' 'titanium-modsign'
 BAP_create_help_option 'sign'
 BAP_generate_parse_func 'sign'
 
-BAP_generate_top_level_cmd_parser 'titanium-modsign'
+BAP_generate_top_level_cmd_parser
 
 type parse_genkey_args
 
