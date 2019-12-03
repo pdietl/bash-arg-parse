@@ -3,10 +3,11 @@
 set -eu
 
 
-declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name> [<help text>]'"
+declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name>'"
 
-declare -ga __bash_parse_functions_to_export=(__bash_parse_die __bash_parse_die_required_arg __bash_parse_check_opt_arg __bash_parse_die_file_must_exist)
-declare -ga __bash_parse_variables_to_export=()
+declare -ga __bash_parse_cmd_functions_to_export=(__bash_parse_die __bash_parse_die_required_arg __bash_parse_check_opt_arg __bash_parse_die_file_must_exist)
+declare -ga __bash_parse_cmd_variables_to_export=()
+declare -ga __bash_parse_cmd_opt_help=()
 
 ####################################################################
 # Private function which are called by functions in the Public API #
@@ -73,22 +74,16 @@ __bash_parse_assert_short_opt() {
 }
 
 __bash_parse_add_opt() {
-    if [ $# -eq 5 ]; then
+    local expected_number_of_args=5
+    if [ $# -eq "$expected_number_of_args" ]; then
         local cmd_name=$1
         local opt_letter=$2
         local opt_name=$3
         local opt_required_or_optional=$4
         local funcname=$5
         local help_text=
-    elif [ $# -eq 6 ]; then
-        local cmd_name=$1
-        local opt_letter=$2
-        local opt_name=$3
-        local help_text=$4
-        local opt_required_or_optional=$5
-        local funcname=$6
     else
-        __bash_parse_die "INTERNAL ERROR! Wrong number of args passed to '${FUNCNAME[0]}'"
+        __bash_parse_die "INTERNAL ERROR! Wrong number of args passed to '${FUNCNAME[0]}'. Should be $expected_number_of_args, but got $#"
     fi
 
     __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "$funcname"
@@ -100,12 +95,50 @@ __bash_parse_add_opt() {
     opt_letter=$(printf "%q" "$opt_letter")
 
     eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional none)"
-
-    [ -n "$help_text" ] && eval "__bash_parse_cmd_${cmd_name}_opts_help_text+="'"'$'\n''  -$opt_letter      $help_text"'
-    true
+    __bash_parse_cmd_opt_help+=("$opt_letter" '')
 }
 
-__bash_opt_is_defined() {
+__bash_parse_get_opt_help_text() {
+    local opt_letter=$1
+    
+    for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
+        local letter=${__bash_parse_cmd_opt_help[i]}
+
+        if [ "$letter" = "$opt_letter" ]; then
+            echo "${__bash_parse_cmd_opt_help[i + 1]}"
+            return 0
+        fi
+    done
+}
+
+__bash_parse_set_opt_help_text() {
+    local opt_letter=$1
+    local opt_help_text=$2
+    local funcname=$3
+
+
+    for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
+        local letter=${__bash_parse_cmd_opt_help[i]}
+
+        if [ "$letter" = "$opt_letter" ]; then
+            __bash_parse_cmd_opt_help[i + 1]=$opt_help_text
+            return 0
+        fi
+    done
+
+    __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_letter'"
+}
+
+__bash_parse_get_all_opt_help_text() {
+    for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
+        local letter=${__bash_parse_cmd_opt_help[i]}
+        local help_text=${__bash_parse_cmd_opt_help[i + 1]}
+    
+        [ -n "$help_text" ] && echo "  -$letter    $help_text"
+    done
+}
+
+__bash_parse_opt_is_defined() {
     local cmd_name=$1
     local opt_name=$2
 
@@ -119,7 +152,7 @@ __bash_opt_is_defined() {
     return 1
 }
 
-__bash_opt_set_arg_type() {
+__bash_parse_opt_set_arg_type() {
     local cmd_name=$1
     local opt_name=$2
     local opt_arg_type=$3
@@ -155,21 +188,15 @@ BAP_generate_parse_func() {
     local getopts_case_colon_body=""
     local check_for_req_args_body=""
     local check_opt_arg_type=""
-    local usage_text="$sub_cmd_name"
+    local add_dash_h=""
+    local usage_text="$sub_cmd_name\$add_dash_h"
     local required_argument_given=no
+    local opts_help_text=""
     
-    declare -n create_help_option="__bash_parse_cmd_${name_of_command}_create_help_option"
-
     eval "local top_level_cmd=\"\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name \""
     [ "$top_level_cmd" = " " ] && top_level_cmd=
 
     eval "declare -n short_opt_array=__bash_parse_cmd_${name_of_command}_opts"
-
-    if [ "$create_help_option" = yes ]; then
-        usage_text+=" -h"
-        getopts_str+='h'
-        getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$USAGE_TEXT_$sub_cmd_name\"; ;; "
-    fi
 
     # Var is set in eval
     # shellcheck disable=SC2154
@@ -178,7 +205,11 @@ BAP_generate_parse_func() {
         local opt_text=${short_opt_array[i + 1]}
         local opt_type=${short_opt_array[i + 2]}
         local opt_arg_type=${short_opt_array[i + 3]}
-        
+        local opt_help_text
+       
+        opt_help_text=$(__bash_parse_get_opt_help_text "$opt_letter")
+        [ -n "$opt_help_text" ] && opts_help_text+="  -$opt_letter    $opt_help_text"
+      
         script_locals+="local __var_$opt_text=; "
         eval_ret+="local $opt_text='\$__var_$opt_text'; "
         getopts_str+="$opt_letter:"
@@ -258,15 +289,19 @@ EOM
     local name_of_usage_text_variable="USAGE_TEXT_$sub_cmd_name"
     local name_of_opt_usage_text_variable="OPT_USAGE_TEXT_$sub_cmd_name"
 
-
-    script+="declare -gr $name_of_usage_text_variable=\"$usage_text\"; "
-
-    declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
-    if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
-        script+="declare -gr $name_of_opt_usage_text_variable=\"$opts_help_text\"; "
-    else
-        script+="declare -gr $name_of_opt_usage_text_variable=;"
+    if [ -n "$opts_help_text" ]; then
+        # Var is used in eval of $usage_text
+        # shellcheck disable=SC2034
+        add_dash_h=' -h'
+        getopts_str+='h'
+        getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$$name_of_usage_text_variable"
+        getopts_case_body+=$'\n\n'"Options: "$'\n'"\$$name_of_opt_usage_text_variable"
+        getopts_case_body+="\" ;; "
     fi
+
+    eval "script+=\"declare -gr \$name_of_usage_text_variable=\\\"$usage_text\\\"; \""
+    # May or may not be empty
+    script+="declare -gr $name_of_opt_usage_text_variable=\"$opts_help_text\"; "
 
     local name_of_generated_func="parse_${sub_cmd_name}_args"
 
@@ -285,8 +320,8 @@ EOM
     script+="echo \"$eval_ret\"; "
     script+="}"
 
-    __bash_parse_functions_to_export+=("$name_of_generated_func")
-    __bash_parse_variables_to_export+=("$name_of_usage_text_variable" "$name_of_opt_usage_text_variable")
+    __bash_parse_cmd_functions_to_export+=("$name_of_generated_func")
+    __bash_parse_cmd_variables_to_export+=("$name_of_usage_text_variable" "$name_of_opt_usage_text_variable")
     eval "$script"
 }
 
@@ -303,7 +338,6 @@ BAP_new_command() {
     declare -gr __bash_parse_cmd_"${cmd_name}"=
     declare -g __bash_parse_cmd_"${cmd_name}"_top_level_cmd_name=
     declare -g __bash_parse_cmd_"${cmd_name}"_opts_help_text=
-    declare -g __bash_parse_cmd_"${cmd_name}"_create_help_option=no
     eval "declare -g __bash_parse_cmd_${cmd_name}_opts=()"
 }
 
@@ -327,6 +361,15 @@ BAP_set_top_level_cmd_name() {
     eval "__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands+=(\$cmd_name)"
 }
 
+BAP_add_short_opt_help_text() {
+    local usage="Usage is '${FUNCNAME[0]} <opt_letter> <help text>'"
+    [ $# -ne 2 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
+    local opt_letter=$1
+    local help_text=$2
+
+    __bash_parse_set_opt_help_text "$opt_letter" "$help_text" "${FUNCNAME[0]}"
+}
+
 BAP_generate_top_level_cmd_parser() {
     local usage="Usage is '${FUNCNAME[0]} <top_level_cmd_name>'"
     [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
@@ -343,7 +386,9 @@ BAP_generate_top_level_cmd_parser() {
     local script=
     local help_text=
     local case_body=
-    local opt_help_text=Options:
+    local opt_help_text=$'Options:\n'
+
+    local name_of_parse_func=parse_top_level_args
 
     declare -n sub_cmd_array="__bash_parse_cmd_top_level_cmd_${top_level_cmd_name_hash}_sub_commands"
     for sub_cmd in "${sub_cmd_array[@]}"; do
@@ -351,34 +396,35 @@ BAP_generate_top_level_cmd_parser() {
             __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must call 'BAP_generate_parse_func()' with an argument of '$sub_cmd' first!"
         fi
         eval "help_text+=\"  $top_level_cmd_name \\\$USAGE_TEXT_${sub_cmd}\"\$'\n'"
-        eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\\\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
-        case_body+="$sub_cmd) shift; $sub_cmd \"\$@\";; "
+        case_body+="$sub_cmd) shift; if ! type -t \"$sub_cmd\" > /dev/null; then __bash_parse_die \"ERROR ($name_of_parse_func): no function named '$sub_cmd' to handle sub command '$sub_cmd'\"; fi; $sub_cmd \"\$@\";; "
     done
+
+    
+    opt_help_text+=$(__bash_parse_get_all_opt_help_text)
 
     help_text=$help_text$'\n'$opt_help_text
     case_body+="*) echo \"$help_text\" && exit 1;; "
 
-    local name_of_parse_func=parse_top_level_args
 
     script+="$name_of_parse_func() { "
     script+="[ \$# -eq 0 ] && echo \"Usage:"$'\n'"$help_text\" && exit 1; "
     script+="case \"\$1\" in $case_body esac"
     script+=" }"
 
-    __bash_parse_functions_to_export+=("$name_of_parse_func")
+    __bash_parse_cmd_functions_to_export+=("$name_of_parse_func")
 
     eval "$script"
 }
 
 BAP_add_required_short_opt() {
-    if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+    if [ $# -ne 3 ]; then
         __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")"
     fi
     __bash_parse_add_opt "$@" required "${FUNCNAME[0]}"
 }
 
 BAP_add_optional_short_opt() {
-    if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+    if [ $# -ne 3 ]; then
         __bash_parse_die "$(eval "echo -n \"\$0: line \${BASH_LINENO[0]}: $__bash_parse_add_short_opt_usage\"")"
     fi
     __bash_parse_add_opt "$@" optional "${FUNCNAME[0]}"
@@ -397,7 +443,7 @@ BAP_set_opt_arg_type() {
 
     eval "declare -n short_opt_array=__bash_parse_cmd_${cmd_name}_opts"
 
-    __bash_opt_is_defined "$cmd_name" "$opt_text" || \
+    __bash_parse_opt_is_defined "$cmd_name" "$opt_text" || \
         __bash_parse_die "$0: line ${BASH_LINENO[0]}: must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_text'"
 
     case "$opt_arg_type" in
@@ -408,19 +454,12 @@ BAP_set_opt_arg_type() {
             ;;
     esac
 
-    __bash_opt_set_arg_type "$cmd_name" "$opt_text" "$opt_arg_type"
-
+    __bash_parse_opt_set_arg_type "$cmd_name" "$opt_text" "$opt_arg_type"
 }
 
-BAP_create_help_option() {
-    local usage="Usage is '${FUNCNAME[0]} <command>'"
-    [ $# -ne 1 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
-    local cmd_name=$1
-    
-    __bash_parse_assert_defined "__bash_parse_cmd_$cmd_name" 'BAP_new_command()' "${FUNCNAME[0]}"
-    
-    eval "__bash_parse_cmd_${cmd_name}_create_help_option=yes"
-}
+########################################################################
+# Main, if this library is called as an executable rather than sourced #
+########################################################################
 
 main() {
     local input_file=$1
@@ -429,7 +468,7 @@ main() {
 
     while IFS= read -r x; do
         eval "$x"
-    done < <(sed -n '/^BAP/p' "$input_file")
+    done < <(sed -n '/^[[:space:]]*BAP/p' "$input_file")
 
     if [ -e "$output_file" ]; then
         rm "$output_file" || exit 1
@@ -448,13 +487,13 @@ main() {
         echo "$first_line"$'\n' >> "$output_file"
     fi
 
-    for v in "${__bash_parse_variables_to_export[@]}"; do
+    for v in "${__bash_parse_cmd_variables_to_export[@]}"; do
         echo "declare -r $v='${!v}'" >> "$output_file"
     done
 
     echo >> "$output_file"
 
-    for f in "${__bash_parse_functions_to_export[@]}"; do
+    for f in "${__bash_parse_cmd_functions_to_export[@]}"; do
         echo "$(declare -f "$f")"$'\n' >> "$output_file"
     done
 
@@ -462,10 +501,8 @@ main() {
         tail -n+2 "$input_file"
     else
         cat "$input_file"
-    fi | sed '/^BAP/d' >> "$output_file"
+    fi | sed '/^[[:space:]]*BAP/d' >> "$output_file"
 }
-
-echo "${BASH_SOURCE[@]}"
 
 if [ "${BASH_SOURCE[-1]##*/}" = "bash_arg_parser" ]; then
     if [ $# -ne 1 ]; then

@@ -5,33 +5,20 @@ set -u
 
 @test 'A command is created with no arguments and the parsing works correctly' {
     local cmd=foo
-    BAP_new_command "$cmd"
-    BAP_generate_parse_func "$cmd"
-    run parse_${cmd}_args
-    pv output
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args" > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out"
 
+    cat "$temp"
+    cat "$temp.out"
+    pv output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = 'shift 0; ' ]
-}
-
-@test 'A command is created with no arguments and help text, parsing works correctly and help is displayed' {
-    local cmd=foo
-    BAP_new_command "$cmd"
-    BAP_create_help_option "$cmd"
-    BAP_generate_parse_func "$cmd"
-    
-    run parse_${cmd}_args
-    pv output cmd
-    [ "$status" -eq 0 ]
-    [ ${#lines[@]} -eq 1 ]
-    [ "$output" = 'shift 0; ' ]
-    
-    run parse_foo_args -h
-    pv output
-    [ "$status" -ne 0 ]
-    [ ${#lines[@]} -eq 1 ]
-    [ "$output" = "Usage: $cmd -h" ]
 }
 
 @test 'A command is created with one required argument and fails with proper usage text when that argument is not given' {

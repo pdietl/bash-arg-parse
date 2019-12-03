@@ -4,6 +4,7 @@ DOCKER_IMAGE_TAG := pdietl/ubuntu18.04_base:$(DOCKER_IMAGE_VER)
 vol_mnt    = -v $(1):$(1)
 vol_mnt_ro = $(call vol_mnt,$(1)):ro
 map        = $(foreach f,$(2),$(call $(1),$(f)))
+uniq       = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 
 DOCKER_ARGS = -t --rm -w $(CURDIR) $(call vol_mnt,$(CURDIR))
 DOCKER_ARGS += $(call map,vol_mnt_ro,/etc/passwd /etc/group)
@@ -18,7 +19,8 @@ DOCKER_ARGS += $(DOCKER_IMAGE_TAG)
 .PHONY: $(addprefix docker-,build publish shell) test
 
 test:
-	shellcheck $(sort $(wildcard src/* test/*))
+	@# Don't rerun shellcheck on symlinks pointing to files already find by this wildcard
+	shellcheck $(call uniq, $(realpath $(sort $(wildcard src/* test/*))))
 	bats test/
 
 docker-shell:
