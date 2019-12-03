@@ -465,7 +465,9 @@ main() {
     fi | sed '/^BAP/d' >> "$output_file"
 }
 
-if [ "${BASH_SOURCE[0]##*/}" = "bash_arg_parser" ]; then
+echo "${BASH_SOURCE[@]}"
+
+if [ "${BASH_SOURCE[-1]##*/}" = "bash_arg_parser" ]; then
     if [ $# -ne 1 ]; then
         echo "Usage: $0 <input file name>"
         exit 1
