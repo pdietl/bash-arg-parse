@@ -2,7 +2,7 @@
 
 set -u
 
-. ../src/bash_arg_parser
+#. ../src/bash_arg_parser
 
 BAP_new_command 'santa'
 BAP_set_top_level_cmd_name 'santa' 'greet'

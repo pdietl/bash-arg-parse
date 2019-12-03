@@ -8,6 +8,9 @@ set -eu
 
 declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name> [<help text>]'"
 
+declare -ga __bash_parse_functions_to_export=()
+declare -ga __bash_parse_variables_to_export=()
+
 __bash_parse_die() {
     echo -e "$@" >&2
     exit 1
@@ -247,16 +250,22 @@ EOM
 
     eval_ret+="shift \$((OPTIND - 1)); "
     
-    script+="declare -gr USAGE_TEXT_$sub_cmd_name=\"$usage_text\"; "
+    local name_of_usage_text_variable="USAGE_TEXT_$sub_cmd_name"
+    local name_of_opt_usage_text_variable="OPT_USAGE_TEXT_$sub_cmd_name"
+
+
+    script+="declare -gr $name_of_usage_text_variable=\"$usage_text\"; "
 
     declare -n opts_help_text="__bash_parse_cmd_${sub_cmd_name}_opts_help_text"
     if [ "$create_help_option" = yes ] && [ -n "$opts_help_text" ]; then
-        script+="declare -gr OPT_USAGE_TEXT_$sub_cmd_name=\"$opts_help_text\"; "
+        script+="declare -gr $name_of_opt_usage_text_variable=\"$opts_help_text\"; "
     else
-        script+="declare -gr OPT_USAGE_TEXT_$sub_cmd_name=;"
+        script+="declare -gr $name_of_opt_usage_text_variable=;"
     fi
 
-    script+="parse_${sub_cmd_name}_args() { "
+    local name_of_generated_func="parse_${sub_cmd_name}_args"
+
+    script+="$name_of_generated_func() { "
     script+=$script_locals
 
     if [ "$required_argument_given" = yes ]; then
@@ -271,6 +280,8 @@ EOM
     script+="echo \"$eval_ret\"; "
     script+="}"
 
+    __bash_parse_functions_to_export+=("$name_of_generated_func")
+    __bash_parse_variables_to_export+=("$name_of_usage_text_variable" "$name_of_opt_usage_text_variable")
     eval "$script"
 }
 
@@ -334,9 +345,6 @@ BAP_generate_top_level_cmd_parser() {
         if ! [ -v "USAGE_TEXT_$sub_cmd" ]; then
             __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must call 'BAP_generate_parse_func()' with an argument of '$sub_cmd' first!"
         fi
-            if ! type -t "$sub_cmd" > /dev/null; then
-            __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must define function(s) with name(s) corresponding to each sub command. So far we know that you have not defined the function '$sub_cmd'"
-        fi
         eval "help_text+=\"  $top_level_cmd_name \$USAGE_TEXT_${sub_cmd}\"$'\n'"
         eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
         case_body+="$sub_cmd) shift; $sub_cmd \"\$@\";; "
@@ -345,10 +353,15 @@ BAP_generate_top_level_cmd_parser() {
     help_text=$help_text$'\n'$opt_help_text
     case_body+="*) echo '$help_text' && exit 1;; "
 
-    script+="parse_top_level_args() { "
+    local name_of_parse_func=parse_top_level_args
+
+    script+="$name_of_parse_func() { "
     script+="[ \$# -eq 0 ] && echo 'Usage:'$'\n''$help_text' && exit 1; "
     script+="case \"\$1\" in $case_body esac"
     script+=" }"
+
+    __bash_parse_functions_to_export+=("$name_of_parse_func")
+
     eval "$script"
 }
 
@@ -403,3 +416,54 @@ BAP_create_help_option() {
     
     eval "__bash_parse_cmd_${cmd_name}_create_help_option=yes"
 }
+
+main() {
+    local input_file=$1
+    local output_file="$input_file.out"  
+    local delete_shbang=no
+
+    while IFS= read -r x; do
+        eval "$x"
+    done < <(sed -n '/^BAP/p' "$input_file")
+
+    if [ -e "$output_file" ]; then
+        rm "$output_file" || exit 1
+    fi
+
+    # so that we have the same permissions
+    cp "$input_file" "$output_file"
+    # Clear the contents
+    true > "$output_file"
+
+    local first_line
+    first_line=$(head -n1 "$input_file")
+
+    if [ "${first_line:0:2}" = '#!' ]; then
+        delete_shbang=yes
+        echo "$first_line"$'\n' >> "$output_file"
+    fi
+
+    for v in "${__bash_parse_variables_to_export[@]}"; do
+        echo "declare -r $v='${!v}'" >> "$output_file"
+    done
+
+    echo >> "$output_file"
+
+    for f in "${__bash_parse_functions_to_export[@]}"; do
+        echo "$(declare -f "$f")"$'\n' >> "$output_file"
+    done
+
+    if [ "$delete_shbang" = yes ]; then
+        tail -n+2 "$input_file"
+    else
+        cat "$input_file"
+    fi | sed '/^BAP/d' >> "$output_file"
+}
+
+if [ "${BASH_SOURCE[0]##*/}" = "bash_arg_parser" ]; then
+    if [ $# -ne 1 ]; then
+        echo "Usage: $0 <input file name>"
+        exit 1
+    fi
+    main "$@"
+fi

@@ -406,21 +406,6 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_generate_top_level_cmd_parser is called with a valid argument, but no function with the same name of a command with the given top-level command is defined' {
-    local cmd=bar
-    local top_level_cmd=foo
-    local re=".*: line 52: \(BAP_generate_top_level_cmd_parser\) must define function\(s\) with name\(s\) corresponding to each sub command. So far we know that you have not defined the function 'bar'$"
-
-    BAP_new_command "$cmd"
-    BAP_set_top_level_cmd_name "$cmd" "$top_level_cmd"
-    BAP_generate_parse_func "$cmd"
-    run BAP_generate_top_level_cmd_parser "$top_level_cmd"
-    pv output re
-    [ "$status" -ne 0 ]
-    [ ${#lines[@]} -eq 1 ]
-    [[ "$output" =~ $re ]]
-}
-
 @test 'BAP_generate_top_level_cmd_parser succeeds when called with valid arguments and with the proper funtions having been previously called' {
     local cmd=bar
     local top_level_cmd=foo
