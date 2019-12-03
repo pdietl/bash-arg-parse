@@ -2,14 +2,15 @@
 
 set -eu
 
-#####################
-# Private functions #
-#####################
 
 declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name> [<help text>]'"
 
-declare -ga __bash_parse_functions_to_export=()
+declare -ga __bash_parse_functions_to_export=(__bash_parse_die __bash_parse_die_required_arg __bash_parse_check_opt_arg __bash_parse_die_file_must_exist)
 declare -ga __bash_parse_variables_to_export=()
+
+####################################################################
+# Private function which are called by functions in the Public API #
+####################################################################
 
 __bash_parse_die() {
     echo -e "$@" >&2
@@ -39,6 +40,10 @@ __bash_parse_check_opt_arg() {
     # because that is probably an option flag
     [ -n "${arg}" ] && ! [[ "${arg}" = -* ]]
 }
+
+#####################
+# Private functions #
+#####################
 
 __bash_parse_check_valid_bash_var_name() {
 	local bash_var_name=$1
@@ -179,7 +184,7 @@ BAP_generate_parse_func() {
         getopts_str+="$opt_letter:"
         getopts_case_body+="$opt_letter) __var_$opt_text=\$OPTARG; "
         getopts_case_body+="__bash_parse_check_opt_arg \"\$__var_$opt_text\" || "
-        getopts_case_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd \$USAGE_TEXT_$sub_cmd_name\";; "
+        getopts_case_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\";; "
 
         getopts_case_colon_body+="$opt_letter) "
         getopts_case_colon_body+="__bash_parse_die_required_arg '<$opt_text>' \"$top_level_cmd\$USAGE_TEXT_$sub_cmd_name\";; "
@@ -345,18 +350,18 @@ BAP_generate_top_level_cmd_parser() {
         if ! [ -v "USAGE_TEXT_$sub_cmd" ]; then
             __bash_parse_die  "$0: line ${BASH_LINENO[0]}: (${FUNCNAME[0]}) must call 'BAP_generate_parse_func()' with an argument of '$sub_cmd' first!"
         fi
-        eval "help_text+=\"  $top_level_cmd_name \$USAGE_TEXT_${sub_cmd}\"$'\n'"
-        eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
+        eval "help_text+=\"  $top_level_cmd_name \\\$USAGE_TEXT_${sub_cmd}\"\$'\n'"
+        eval "if [ -n \"\$OPT_USAGE_TEXT_${sub_cmd}\" ]; then opt_help_text+=\\\$OPT_USAGE_TEXT_${sub_cmd}$'\n'; else true; fi"
         case_body+="$sub_cmd) shift; $sub_cmd \"\$@\";; "
     done
 
     help_text=$help_text$'\n'$opt_help_text
-    case_body+="*) echo '$help_text' && exit 1;; "
+    case_body+="*) echo \"$help_text\" && exit 1;; "
 
     local name_of_parse_func=parse_top_level_args
 
     script+="$name_of_parse_func() { "
-    script+="[ \$# -eq 0 ] && echo 'Usage:'$'\n''$help_text' && exit 1; "
+    script+="[ \$# -eq 0 ] && echo \"Usage:"$'\n'"$help_text\" && exit 1; "
     script+="case \"\$1\" in $case_body esac"
     script+=" }"
 
