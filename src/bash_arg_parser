@@ -2,7 +2,6 @@
 
 set -eu
 
-
 declare -gr __bash_parse_add_short_opt_usage="Usage is '\${FUNCNAME[0]} <command> <opt_letter> <opt_name>'"
 
 declare -ga __bash_parse_cmd_functions_to_export=(__bash_parse_die __bash_parse_die_required_arg __bash_parse_check_opt_arg __bash_parse_die_file_must_exist)
@@ -95,7 +94,8 @@ __bash_parse_add_opt() {
     opt_letter=$(printf "%q" "$opt_letter")
 
     eval "__bash_parse_cmd_${cmd_name}_opts+=(\"\$opt_letter\" \"\$opt_name\" $opt_required_or_optional none)"
-    __bash_parse_cmd_opt_help+=("$opt_letter" '')
+
+    __bash_parse_add_blank_opt_help_if_doesnt_exist "$opt_letter"
 }
 
 __bash_parse_get_opt_help_text() {
@@ -116,7 +116,6 @@ __bash_parse_set_opt_help_text() {
     local opt_help_text=$2
     local funcname=$3
 
-
     for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
         local letter=${__bash_parse_cmd_opt_help[i]}
 
@@ -129,6 +128,20 @@ __bash_parse_set_opt_help_text() {
     __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_letter'"
 }
 
+__bash_parse_add_blank_opt_help_if_doesnt_exist() {
+    local opt_letter=$1
+    
+    for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
+        local letter=${__bash_parse_cmd_opt_help[i]}
+
+        if [ "$letter" = "$opt_letter" ]; then
+            return 0
+        fi
+    done
+
+    __bash_parse_cmd_opt_help+=("$opt_letter" '')
+}
+
 __bash_parse_get_all_opt_help_text() {
     for ((i = 0; i < ${#__bash_parse_cmd_opt_help[@]}; i += 2)); do
         local letter=${__bash_parse_cmd_opt_help[i]}
@@ -136,6 +149,7 @@ __bash_parse_get_all_opt_help_text() {
     
         [ -n "$help_text" ] && echo "  -$letter    $help_text"
     done
+    true
 }
 
 __bash_parse_opt_is_defined() {
@@ -208,7 +222,7 @@ BAP_generate_parse_func() {
         local opt_help_text
        
         opt_help_text=$(__bash_parse_get_opt_help_text "$opt_letter")
-        [ -n "$opt_help_text" ] && opts_help_text+="  -$opt_letter    $opt_help_text"
+        [ -n "$opt_help_text" ] && opts_help_text+="  -$opt_letter    $opt_help_text"$'\n'
       
         script_locals+="local __var_$opt_text=; "
         eval_ret+="local $opt_text='\$__var_$opt_text'; "
@@ -292,7 +306,7 @@ EOM
     if [ -n "$opts_help_text" ]; then
         # Var is used in eval of $usage_text
         # shellcheck disable=SC2034
-        add_dash_h=' -h'
+        add_dash_h=' [-h]'
         getopts_str+='h'
         getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$$name_of_usage_text_variable"
         getopts_case_body+=$'\n\n'"Options: "$'\n'"\$$name_of_opt_usage_text_variable"
@@ -404,7 +418,6 @@ BAP_generate_top_level_cmd_parser() {
 
     help_text=$help_text$'\n'$opt_help_text
     case_body+="*) echo \"$help_text\" && exit 1;; "
-
 
     script+="$name_of_parse_func() { "
     script+="[ \$# -eq 0 ] && echo \"Usage:"$'\n'"$help_text\" && exit 1; "
