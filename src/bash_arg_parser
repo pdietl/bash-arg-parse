@@ -206,7 +206,10 @@ BAP_generate_parse_func() {
     local usage_text="$sub_cmd_name\$add_dash_h"
     local required_argument_given=no
     local opts_help_text=""
+    local name_of_generated_func="parse_${sub_cmd_name}_args"
     
+    type "$name_of_generated_func" &> /dev/null && __bash_parse_die "$0: line ${BASH_LINENO[0]}: ${FUNCNAME[0]}: cannot regenerate parse function for command '$sub_cmd_name'!" 
+
     eval "local top_level_cmd=\"\$__bash_parse_cmd_${name_of_command}_top_level_cmd_name \""
     [ "$top_level_cmd" = " " ] && top_level_cmd=
 
@@ -316,8 +319,6 @@ EOM
     eval "script+=\"declare -gr \$name_of_usage_text_variable=\\\"$usage_text\\\"; \""
     # May or may not be empty
     script+="declare -gr $name_of_opt_usage_text_variable=\"$opts_help_text\"; "
-
-    local name_of_generated_func="parse_${sub_cmd_name}_args"
 
     script+="$name_of_generated_func() { "
     script+=$script_locals

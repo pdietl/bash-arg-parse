@@ -259,6 +259,18 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     type -t "parse_${cmd}_args"
 }
 
+@test 'BAP_generate_parse_func() fails when called twice for the same command' {
+    local cmd=foo
+    local re=".* line 52: BAP_generate_parse_func: cannot regenerate parse function for command '$cmd'!"
+    BAP_new_command "$cmd"
+    BAP_generate_parse_func "$cmd"
+    run BAP_generate_parse_func "$cmd"
+    pv output
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ $output =~ $re ]]
+}
+
 ########################
 # BAP_set_opt_arg_type #
 ########################
