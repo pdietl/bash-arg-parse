@@ -86,16 +86,6 @@ Usage:
   greet santa [-h] [-w <whom>]
   greet mom [-h] -w <whom>
 
-Options:  -w    The person whom should be greeted.
-$ ../src/bash_arg_parser ./greet_sub_commands
-$ vim greet_sub_commands.out 
-$ rm greet_sub_commands.out 
-$ vim greet_sub_commands
-$ ./greet_sub_commands
-Usage:
-  greet santa [-h] [-w <whom>]
-  greet mom [-h] -w <whom>
-
 Options:
   -w    The person whom should be greeted.
 $ ./greet_sub_commands santa
