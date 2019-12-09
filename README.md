@@ -41,7 +41,7 @@ You can either include the bash parsing library via a source command into your s
 
 - `BAP_set_opt_arg_type(command, opt_name, opt_arg_type)`: This function is used to enforce restrictions upon option arguments. The only type option currently is `existent_file`, which requires that the option argument provided is a file which exists.
 
-- `BAP_add_short_opt_help_text(opt_letter, help_text)`: Help text options generate some interesting behavior. By default, there is not -h option for a command unless at least one of its opts has help text associated with it. This is done by calling `BAP_add_short_opt_help_text`. Another side affect of calling this function is that the top_level_cmd_parser, if you choose to generate one, will now contain a -h option if any of its sub commands have options. Further, the top_level command parsers' help text will display the union of all options for all sub commands.
+- `BAP_add_short_opt_help_text(opt_letter, help_text)`: Help text options generate some interesting behavior. By default, there is not -h option for a command unless at least one of its opts has help text associated with it. This is done by calling `BAP_add_short_opt_help_text`. Another side affect of calling this function is that the top_level_cmd_parser, if you choose to generate one, will now contain a -h option if any of its sub commands have options. Further, the top_level command parsers' help text will display the union of all options for all sub commands. Also, help text is shared between all commands which have the same opt_letter parameters.
 
 - `BAP_generate_parse_func(command)`: When one is all done setting up parameters for a command, one should call this function to generate a new function which will parse the arguments. Given an argument of `foo` for parameter `command`, a function named `parse_foo_args` will be produced. This new function will return a string which when `eval-ed` will insert local varaibles corrsponding to option names into the current function.
 
@@ -49,3 +49,15 @@ You can either include the bash parsing library via a source command into your s
 
 
 # Examples
+All examples mentioned here are contained within the `examples` folder
+
+## file: greet_req_arg
+```bash
+$ ./greet_req_arg 
+Usage: greet -w <whom>
+$ ./greet_req_arg -w
+fatal: <whom> required.
+Usage: greet -w <whom>
+$ ./greet_req_arg -w Pete
+Hello, Pete!
+```
