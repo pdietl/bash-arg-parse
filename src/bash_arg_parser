@@ -125,7 +125,7 @@ __bash_parse_set_opt_help_text() {
         fi
     done
 
-    __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_letter'"
+    __bash_parse_die "$0: line ${BASH_LINENO[1]}: ($funcname) must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' first to define option '$opt_letter'"
 }
 
 __bash_parse_add_blank_opt_help_if_doesnt_exist() {
@@ -309,8 +309,8 @@ EOM
         add_dash_h=' [-h]'
         getopts_str+='h'
         getopts_case_body+="h) __bash_parse_die \"Usage: $top_level_cmd\$$name_of_usage_text_variable"
-        getopts_case_body+=$'\n\n'"Options: "$'\n'"\$$name_of_opt_usage_text_variable"
-        getopts_case_body+="\" ;; "
+        getopts_case_body+=$'\n\n'"Options:"$'\n'"\$$name_of_opt_usage_text_variable"
+        getopts_case_body+="\";; "
     fi
 
     eval "script+=\"declare -gr \$name_of_usage_text_variable=\\\"$usage_text\\\"; \""
@@ -356,7 +356,7 @@ BAP_new_command() {
 }
 
 BAP_set_top_level_cmd_name() {
-    local usage="Usage is '${FUNCNAME[0]} <command> <top level cmd name>'"
+    local usage="Usage is '${FUNCNAME[0]} <command> <top_level_cmd_name>'"
     [ $# -ne 2 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local cmd_name=$1
     # Var is used in eval
@@ -376,7 +376,7 @@ BAP_set_top_level_cmd_name() {
 }
 
 BAP_add_short_opt_help_text() {
-    local usage="Usage is '${FUNCNAME[0]} <opt_letter> <help text>'"
+    local usage="Usage is '${FUNCNAME[0]} <opt_letter> <help_text>'"
     [ $# -ne 2 ] && __bash_parse_die "$0: line ${BASH_LINENO[0]}: $usage"
     local opt_letter=$1
     local help_text=$2
@@ -400,7 +400,7 @@ BAP_generate_top_level_cmd_parser() {
     local script=
     local help_text=
     local case_body=
-    local opt_help_text=$'Options:\n'
+    local opt_help_text=
 
     local name_of_parse_func=parse_top_level_args
 
@@ -413,10 +413,14 @@ BAP_generate_top_level_cmd_parser() {
         case_body+="$sub_cmd) shift; if ! type -t \"$sub_cmd\" > /dev/null; then __bash_parse_die \"ERROR ($name_of_parse_func): no function named '$sub_cmd' to handle sub command '$sub_cmd'\"; fi; $sub_cmd \"\$@\";; "
     done
 
-    
     opt_help_text+=$(__bash_parse_get_all_opt_help_text)
 
-    help_text=$help_text$'\n'$opt_help_text
+    if [ -n "$opt_help_text" ]; then
+        help_text="  $top_level_cmd_name [-h]"$'\n'$help_text$'Options:\n  -h    Show this help text.\n'$opt_help_text
+    else
+        help_text=$help_text
+    fi
+
     case_body+="*) echo \"$help_text\" && exit 1;; "
 
     script+="$name_of_parse_func() { "
@@ -495,26 +499,34 @@ main() {
     local first_line
     first_line=$(head -n1 "$input_file")
 
-    if [ "${first_line:0:2}" = '#!' ]; then
-        delete_shbang=yes
-        echo "$first_line"$'\n' >> "$output_file"
-    fi
+    {
+        if [ "${first_line:0:2}" = '#!' ]; then
+            delete_shbang=yes
+            echo "$first_line"$'\n'
+        fi
 
-    for v in "${__bash_parse_cmd_variables_to_export[@]}"; do
-        echo "declare -r $v='${!v}'" >> "$output_file"
-    done
+        echo '#BEGIN bash_arg_parse generated code'
+        echo
 
-    echo >> "$output_file"
+        for v in "${__bash_parse_cmd_variables_to_export[@]}"; do
+            echo "declare -r $v='${!v}'"
+        done
 
-    for f in "${__bash_parse_cmd_functions_to_export[@]}"; do
-        echo "$(declare -f "$f")"$'\n' >> "$output_file"
-    done
+        echo
 
-    if [ "$delete_shbang" = yes ]; then
-        tail -n+2 "$input_file"
-    else
-        cat "$input_file"
-    fi | sed '/^[[:space:]]*BAP/d' >> "$output_file"
+        for f in "${__bash_parse_cmd_functions_to_export[@]}"; do
+            echo "$(declare -f "$f")"$'\n'
+        done
+
+        echo
+        echo '#END bash_arg_parse generated code'
+
+        if [ "$delete_shbang" = yes ]; then
+            tail -n+2 "$input_file"
+        else
+            cat "$input_file"
+        fi | sed '/^[[:space:]]*BAP/d'
+    } >> "$output_file"
 }
 
 if [ "${BASH_SOURCE[-1]##*/}" = "bash_arg_parser" ]; then

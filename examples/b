@@ -1,20 +1,16 @@
 #!/bin/bash
 
-. ../src/bash_arg_parser
-
 BAP_new_command 'genkey'
 BAP_set_top_level_cmd_name 'genkey' 'titanium-modsign'
 BAP_add_optional_short_opt 'genkey' 'x' 'x509_config'
 BAP_add_required_short_opt 'genkey' 'c' 'foo'
-BAP_add_short_opt_help_text 'c' 'The configuration!'
+
 BAP_generate_parse_func 'genkey'
 
 BAP_new_command 'sign'
 BAP_add_required_short_opt 'sign' 'k' 'key'
 BAP_set_top_level_cmd_name 'sign' 'titanium-modsign'
-BAP_add_short_opt_help_text 'k' 'The key with which to sign.'
 BAP_generate_parse_func 'sign'
-
 
 BAP_generate_top_level_cmd_parser 'titanium-modsign'
 
@@ -43,7 +39,5 @@ sign() {
     pv key
 
 }
-
-type parse_sign_args
 
 parse_top_level_args "$@"

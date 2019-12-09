@@ -2,7 +2,7 @@ load ../src/bash_arg_parser
 load utils
 
 declare -gr new_command_usage_re="[^[:space:]]+ line 52: Usage is 'BAP_new_command <new_command>'$"
-declare -gr set_top_level_cmd_name_usage_re="[^[:space:]]+ line 52: Usage is 'BAP_set_top_level_cmd_name <command> <top level cmd name>'$"
+declare -gr set_top_level_cmd_name_usage_re="[^[:space:]]+ line 52: Usage is 'BAP_set_top_level_cmd_name <command> <top_level_cmd_name>'$"
 declare -gr add_required_short_opt_re="[^[:space:]]+ line 52: Usage is 'BAP_add_required_short_opt <command> <opt_letter> <opt_name>'$"
 declare -gr add_optional_short_opt_re="[^[:space:]]+ line 52: Usage is 'BAP_add_optional_short_opt <command> <opt_letter> <opt_name>'$"
 declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generate_parse_func <command>'$"
@@ -225,7 +225,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
 # BAP_generate_parse_func() #
 #############################
 
-@test 'BAP_generate_parse_func fails when called with no arguments' {
+@test 'BAP_generate_parse_func() fails when called with no arguments' {
     run BAP_generate_parse_func
     pv output generate_parse_func_re
     [ "$status" -ne 0 ]
@@ -233,7 +233,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $generate_parse_func_re ]]
 }
 
-@test 'BAP_generate_parse_func fails when BAP_new_command has not been called already' {
+@test 'BAP_generate_parse_func() fails when BAP_new_command has not been called already' {
     local cmd=foo
     local re="^.* \(BAP_generate_parse_func\) must call 'BAP_new_command\(\)' first to define command '$cmd'\$"
     run BAP_generate_parse_func "$cmd"
@@ -243,7 +243,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_generate_parse_func succeeds when called with valid arguments' {
+@test 'BAP_generate_parse_func() succeeds when called with valid arguments' {
     local cmd=foo
     BAP_new_command "$cmd"
     run BAP_generate_parse_func "$cmd"
@@ -252,7 +252,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ ${#lines[@]} -eq 0 ]
 }
 
-@test 'BAP_generate_parse_func when called correctly generates a properly named parser function' {
+@test 'BAP_generate_parse_func() when called correctly generates a properly named parser function' {
     local cmd=foo
     BAP_new_command "$cmd"
     BAP_generate_parse_func "$cmd"
@@ -263,7 +263,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
 # BAP_set_opt_arg_type #
 ########################
 
-@test 'BAP_set_opt_arg_type fails when called with no arguments' {
+@test 'BAP_set_opt_arg_type() fails when called with no arguments' {
     local re="^.*: line 52: Usage is 'BAP_set_opt_arg_type <command> <opt_name> <opt_arg_type>'$"
     run BAP_set_opt_arg_type
     pv output re
@@ -272,7 +272,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_set_opt_arg_type fails when BAP_new_command has not been called already' {
+@test 'BAP_set_opt_arg_type() fails when BAP_new_command has not been called already' {
     local cmd=foo
     local re="^.* must call 'BAP_new_command\(\)' first to define command '$cmd'$"
     run BAP_set_opt_arg_type "$cmd" 'bar' 'baz'
@@ -282,7 +282,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_set_opt_arg_type fails when BAP_add_optional_short_opt or BAP_add_required_short_opt() has not been called already' {
+@test 'BAP_set_opt_arg_type() fails when BAP_add_optional_short_opt or BAP_add_required_short_opt() has not been called already' {
     local cmd=foo
     local opt=bar
     local re="^.* must call 'BAP_add_optional_short_opt\(\)' or 'BAP_add_required_short_opt\(\)' to define option '$opt'$"
@@ -294,7 +294,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_set_opt_arg_type succeeds when called with valid arguments' {
+@test 'BAP_set_opt_arg_type() succeeds when called with valid arguments' {
     local cmd=foo
     local opt=bar
     BAP_new_command "$cmd"
@@ -305,7 +305,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [ ${#lines[@]} -eq 0 ]
 }
 
-@test 'BAP_set_opt_arg_type fails when called with an invalid opt type' {
+@test 'BAP_set_opt_arg_type() fails when called with an invalid opt type' {
     local cmd=foo
     local opt=bar
     local re=".* opt arg type must be one of: \[existent_file\]$"
@@ -322,7 +322,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
 # BAP_generate_top_level_cmd_parser #
 #####################################
 
-@test 'BAP_generate_top_level_cmd_parser fails when called with no arguments' {
+@test 'BAP_generate_top_level_cmd_parser() fails when called with no arguments' {
     local re="^.*: line 52: Usage is 'BAP_generate_top_level_cmd_parser <top_level_cmd_name>'$"
     run BAP_generate_top_level_cmd_parser
     pv output re
@@ -331,7 +331,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_generate_top_level_cmd_parser fails when called with an argument of a top-level command which has not yet been created with a call to BAP_set_top_level_cmd_name()' {
+@test 'BAP_generate_top_level_cmd_parser() fails when called with an argument of a top-level command which has not yet been created with a call to BAP_set_top_level_cmd_name()' {
     local top_level_cmd=foo
     local re="^.*: line 52: \(BAP_generate_top_level_cmd_parser\) must call 'BAP_set_top_level_cmd_name\(\)' with a second argument of '$top_level_cmd' first!$"
     run BAP_generate_top_level_cmd_parser "$top_level_cmd"
@@ -342,7 +342,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
 
 }
 
-@test 'BAP_generate_top_level_cmd_parser fails when called with a top-level command associated with a sub command which has not yet had BAP_generate_parse_func called on it' {
+@test 'BAP_generate_top_level_cmd_parser() fails when called with a top-level command associated with a sub command which has not yet had BAP_generate_parse_func called on it' {
     local cmd=bar
     local top_level_cmd=foo
     local re="^.*: line 52: \(BAP_generate_top_level_cmd_parser\) must call 'BAP_generate_parse_func\(\)' with an argument of 'bar' first!$"
@@ -356,7 +356,7 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     [[ "$output" =~ $re ]]
 }
 
-@test 'BAP_generate_top_level_cmd_parser succeeds when called with valid arguments and with the proper funtions having been previously called' {
+@test 'BAP_generate_top_level_cmd_parser() succeeds when called with valid arguments and with the proper funtions having been previously called' {
     local cmd=bar
     local top_level_cmd=foo
 
@@ -366,6 +366,49 @@ declare -gr generate_parse_func_re="[^[:space:]]+ line 52: Usage is 'BAP_generat
     eval "$cmd() { :; }"
     run BAP_generate_top_level_cmd_parser "$top_level_cmd"
     pv output
+    [ "$status" -eq 0 ]
+    [ ${#lines[@]} -eq 0 ]
+}
+
+###############################
+# BAP_add_short_opt_help_text #
+###############################
+
+@test 'BAP_add_short_opt_help_text() fails when called with no arguments' {
+    local re="^.*: line 52: Usage is 'BAP_add_short_opt_help_text <opt_letter> <help_text>'$"
+    run BAP_add_short_opt_help_text
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_short_opt_help_text() fails when called with only one argument' {
+    local re="^.*: line 52: Usage is 'BAP_add_short_opt_help_text <opt_letter> <help_text>'$"
+    run BAP_add_short_opt_help_text
+    pv output re
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_short_opt_help_text() fails when called with an argument for an opt_letter which has not been previously defined' {
+    local opt_letter=d 
+    local re="line 52: \(BAP_add_short_opt_help_text\) must call 'BAP_add_optional_short_opt\(\)' or 'BAP_add_required_short_opt\(\)' first to define option 'd'"
+    run BAP_add_short_opt_help_text "$opt_letter" help_text
+    pv output opt_letter
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [[ "$output" =~ $re ]]
+}
+
+@test 'BAP_add_short_opt_help_text() succeeds when called with proper arguments' {
+    local cmd=foo
+    local opt_letter=d
+    BAP_new_command "$cmd"
+    BAP_add_required_short_opt "$cmd" "$opt_letter" bar
+    run BAP_add_short_opt_help_text "$opt_letter" "The help text for option '$cmd'"
+    pv output cmd opt_letter
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 0 ]
 }

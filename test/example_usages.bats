@@ -5,17 +5,19 @@ set -u
 
 @test 'A command is created with no arguments and the parsing works correctly' {
     local cmd=foo
+    local temp
     temp=$(mktemp)
     echo "
         BAP_new_command '$cmd'
         BAP_generate_parse_func '$cmd'
-        parse_${cmd}_args" > "$temp"
+        parse_${cmd}_args
+        " > "$temp"
     src/bash_arg_parser "$temp"
     run bash "$temp.out"
 
     cat "$temp"
     cat "$temp.out"
-    pv output
+    pv cmd output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = 'shift 0; ' ]
@@ -25,26 +27,43 @@ set -u
     local cmd=foo
     local opt_letter=o
     local opt_name=output_dir
-    BAP_new_command "$cmd"
-    BAP_add_required_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out"
     
-    run parse_${cmd}_args
-    pv output cmd opt_letter opt_name
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name output
     [ "$status" -ne 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = "Usage: $cmd -$opt_letter <$opt_name>" ]
 }
+
 @test 'A command is created with one required argument and fails with proper usage text when the corresponding option flag is provided as an argument, but there is no argument after the flag' {
     local cmd=foo
     local opt_letter=o
     local opt_name=output_dir
-    BAP_new_command "$cmd"
-    BAP_add_required_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out" -o
     
-    run parse_${cmd}_args -o
-    pv output cmd opt_letter opt_name
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name output
     [ "$status" -ne 0 ]
     [ ${#lines[@]} -eq 2 ]
     [ "${lines[0]}" = "fatal: <$opt_name> required." ]
@@ -55,13 +74,21 @@ set -u
     local cmd=foo
     local opt_letter=o
     local opt_name=output_dir
-    local func_arg='dir foo'
-    BAP_new_command "$cmd"
-    BAP_add_required_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
+    local func_arg=i_am_a_directory
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out" -"$opt_letter" "$func_arg"
     
-    run parse_${cmd}_args -o "$func_arg"
-    pv output cmd opt_letter opt_name func_arg
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name func_arg output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = "local output_dir='$func_arg'; shift 2; " ]
@@ -72,12 +99,20 @@ set -u
     local opt_letter=o
     local opt_name=output_dir
     local func_arg=dir_foo
-    BAP_new_command "$cmd"
-    BAP_add_optional_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
-    
-    run parse_${cmd}_args -o "$func_arg"
-    pv output cmd opt_letter opt_name func_arg
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_optional_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out" -"$opt_letter" "$func_arg"
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name func_arg output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = "local output_dir='$func_arg'; shift 2; " ]
@@ -87,12 +122,21 @@ set -u
     local cmd=foo
     local opt_letter=o
     local opt_name=output_dir
-    BAP_new_command "$cmd"
-    BAP_add_optional_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
-    
-    run parse_${cmd}_args
-    pv output cmd opt_letter opt_name
+    local func_arg=dir_foo
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_optional_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out"
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name func_arg output
     [ "$status" -eq 0 ]
     [ ${#lines[@]} -eq 1 ]
     [ "$output" = "local output_dir=''; shift 0; " ]
@@ -102,14 +146,98 @@ set -u
     local cmd=foo
     local opt_letter=o
     local opt_name=output_dir
-    BAP_new_command "$cmd"
-    BAP_add_optional_short_opt "$cmd" "$opt_letter" "$opt_name"
-    BAP_generate_parse_func "$cmd"
-    
-    run parse_${cmd}_args -o
-    pv output cmd opt_letter opt_name
+    local func_arg=dir_foo
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_optional_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out" -"$opt_letter"
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name func_arg output
     [ "$status" -ne 0 ]
     [ ${#lines[@]} -eq 2 ]
     [ "${lines[0]}" = "fatal: <$opt_name> required." ]
     [ "${lines[1]}" = "Usage: $cmd [-$opt_letter <$opt_name>]" ]
+}
+
+@test 'A command is created with no help text and the usage does not contain a [-h] option' {
+    local cmd=foo
+    local opt_letter=b
+    local opt_name=bar
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out"
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name output
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [ "$output" = "Usage: $cmd -$opt_letter <$opt_name>" ]
+}
+
+@test 'A command is created with help text for an option and the usage does contain a [-h] option' {
+    local cmd=foo
+    local opt_letter=b
+    local opt_name=bar
+    local help_text="I am the $opt_name help text."
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_add_short_opt_help_text '$opt_letter' '$help_text'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out"
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name help_text output
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 1 ]
+    [ "$output" = "Usage: $cmd [-h] -$opt_letter <$opt_name>" ]
+}
+
+@test 'A command is created with help text for an option and running the command with -h shows the opt help text' {
+    local cmd=foo
+    local opt_letter=b
+    local opt_name=bar
+    local help_text="I am the $opt_name help text."
+    local temp
+    temp=$(mktemp)
+    echo "
+        BAP_new_command '$cmd'
+        BAP_add_required_short_opt '$cmd' '$opt_letter' '$opt_name'
+        BAP_add_short_opt_help_text '$opt_letter' '$help_text'
+        BAP_generate_parse_func '$cmd'
+        parse_${cmd}_args \"\$@\"
+        " > "$temp"
+    src/bash_arg_parser "$temp"
+    run bash "$temp.out" -h
+
+    cat "$temp"
+    cat "$temp.out"
+    pv cmd opt_letter opt_name help_text output
+    [ "$status" -ne 0 ]
+    [ ${#lines[@]} -eq 3 ]
+    [ "${lines[0]}" = "Usage: $cmd [-h] -$opt_letter <$opt_name>" ]
+    [ "${lines[1]}" = "Options:" ]
+    [ "${lines[2]}" = "  -$opt_letter    $help_text" ]
 }

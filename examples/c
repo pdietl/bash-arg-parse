@@ -1,0 +1,26 @@
+#!/bin/bash
+
+BAP_new_command 'genkey'
+BAP_add_optional_short_opt 'genkey' 'x' 'x509_config'
+BAP_add_short_opt_help_text 'x' 'Help text'
+BAP_add_required_short_opt 'genkey' 'c' 'foo'
+
+BAP_generate_parse_func 'genkey'
+
+# Helper funcs
+pv() {
+    local var=$1
+ 
+    echo "$var is '${!var}'"
+}
+
+genkey() {
+    local get_args
+    get_args=$(parse_genkey_args "$@") || exit
+    eval "$get_args"
+    
+ #   pv output_dir
+    pv x509_config
+}
+
+genkey "$@"
