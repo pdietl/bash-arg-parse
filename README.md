@@ -123,3 +123,32 @@ Usage: greet mom [-h] -w <whom>
 Options:
   -w    The person whom should be greeted.
 ```
+
+## file: greet_sub_commands_generate_top_level_parser
+```bash
+$ ./greet_sub_commands_generate_top_level_parser 
+Usage:
+  greet [-h]
+  greet santa [-h] [-w <whom>]
+  greet mom [-h] -w <whom>
+Options:
+  -h    Show this help text.
+  -w    The person whom should be greeted.
+$ ./greet_sub_commands_generate_top_level_parser -h
+  greet [-h]
+  greet santa [-h] [-w <whom>]
+  greet mom [-h] -w <whom>
+Options:
+  -h    Show this help text.
+  -w    The person whom should be greeted.
+$ ./greet_sub_commands_generate_top_level_parser santa
+Santa is sad and alone since there is noone to greet. You are a monster.
+Remaining arguments: 
+$ ./greet_sub_commands_generate_top_level_parser mom
+Usage: greet mom [-h] -w <whom>
+$ ./greet_sub_commands_generate_top_level_parser mom -h
+Usage: greet mom [-h] -w <whom>
+
+Options:
+  -w    The person whom should be greeted.
+```
