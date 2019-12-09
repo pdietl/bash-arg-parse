@@ -78,3 +78,58 @@ Usage: greet [-h] [-w <whom>]
 $ ./greet_opt_arg_and_help -w Pete
 Hello, Pete!
 ```
+
+## file: greet_sub_commands
+```bash
+$ ./greet_sub_commands
+Usage:
+  greet santa [-h] [-w <whom>]
+  greet mom [-h] -w <whom>
+
+Options:  -w    The person whom should be greeted.
+$ ../src/bash_arg_parser ./greet_sub_commands
+$ vim greet_sub_commands.out 
+$ rm greet_sub_commands.out 
+$ vim greet_sub_commands
+$ ./greet_sub_commands
+Usage:
+  greet santa [-h] [-w <whom>]
+  greet mom [-h] -w <whom>
+
+Options:
+  -w    The person whom should be greeted.
+$ ./greet_sub_commands santa
+Santa is sad and alone since there is noone to greet. You are a monster.
+Remaining arguments: 
+$ ./greet_sub_commands santa 1 2 3
+Santa is sad and alone since there is noone to greet. You are a monster.
+Remaining arguments: 1 2 3
+$ ./greet_sub_commands santa -w
+fatal: <whom> required.
+Usage: greet santa [-h] [-w <whom>]
+$ ./greet_sub_commands santa -w Pete
+Santa put Pete on his naughty list!
+Remaining arguments: 
+$ ./greet_sub_commands santa -w Pete foo bar
+Santa put Pete on his naughty list!
+Remaining arguments: foo bar
+$ ./greet_sub_commands santa -h
+Usage: greet santa [-h] [-w <whom>]
+
+Options:
+  -w    The person whom should be greeted.
+
+$ ./greet_sub_commands mom
+Usage: greet mom [-h] -w <whom>
+$ ./greet_sub_commands mom -w Pete
+Mom loves you, Pete!
+Remaining arguments: 
+$ ./greet_sub_commands mom -w Pete gh
+Mom loves you, Pete!
+Remaining arguments: gh
+$ ./greet_sub_commands mom -h 
+Usage: greet mom [-h] -w <whom>
+
+Options:
+  -w    The person whom should be greeted.
+```
