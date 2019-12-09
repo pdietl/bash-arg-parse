@@ -23,7 +23,7 @@ Some global variables are created for help text and opt help text:
 
 The basic theory of operation is that one calls the various command to construct a command or subcommand to receive arguments. After this, one calls `BAP_generate_parse_func command_name`, which results in a new function coming into existence with the name `parse_new_command_args`. One then calls this function and captures the output. Calling `eval` on the captured output will result in local variables corresponding to the chosen optional and required arguments being set.
 
-# Two Ways of Usage: As a Aourced Library or as a Generator/Preprocessor
+# Two Ways of Usage: As A Sourced Library or As A Generator/Preprocessor
 You can either include the bash parsing library via a source command into your source code, or you can call the bash parsing library with your source code as the argument. In the latter case, you if you call the library with the argument 'foo' then the output file will be called 'foo.out' and it shall be a standalone version of script 'foo' with all of the parsing functions included within it. A caveat, if you use the latter medthod, then you may __*ONLY*__ use string literals as your argumnets to the various `BAP_` functions.
 
 # Restrictions on Public API Function Arguments
@@ -59,5 +59,22 @@ $ ./greet_req_arg -w
 fatal: <whom> required.
 Usage: greet -w <whom>
 $ ./greet_req_arg -w Pete
+Hello, Pete!
+```
+
+## file: greet_opt_arg_and_help
+```bash
+$ ./greet_opt_arg_and_help 
+Hello, you!
+$ ./greet_opt_arg_and_help -h
+Usage: greet [-h] [-w <whom>]
+
+Options:
+  -w    The persom whom should be greeted.
+
+$ ./greet_opt_arg_and_help -w
+fatal: <whom> required.
+Usage: greet [-h] [-w <whom>]
+$ ./greet_opt_arg_and_help -w Pete
 Hello, Pete!
 ```
