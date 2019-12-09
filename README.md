@@ -45,7 +45,7 @@ You can either include the bash parsing library via a source command into your s
 
 - `BAP_generate_parse_func(command)`: When one is all done setting up parameters for a command, one should call this function to generate a new function which will parse the arguments. Given an argument of `foo` for parameter `command`, a function named `parse_foo_args` will be produced. This new function will return a string which when `eval-ed` will insert local varaibles corrsponding to option names into the current function.
 
-- `BAP_generate_top_level_cmd_parser(top_level_cmd_name)`: This command will automatically generate a parser which will delegate to sub parser handling functions for each sub command. See examples.
+- `BAP_generate_top_level_cmd_parser(top_level_cmd_name)`: This command will automatically generate a parser function `parse_top_level_args` which will delegate to sub parser handling functions for each sub command. See examples.
 
 
 # Examples
