@@ -460,7 +460,7 @@ BAP_set_opt_arg_type() {
     eval "declare -n short_opt_array=__bash_parse_cmd_${cmd_name}_opts"
 
     __bash_parse_opt_is_defined "$cmd_name" "$opt_text" || \
-        __bash_parse_die "$0: line ${BASH_LINENO[0]}: must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_text'"
+        __bash_parse_die "$0: line ${BASH_LINENO[0]}: (BAP_set_opt_arg_type) must call 'BAP_add_optional_short_opt()' or 'BAP_add_required_short_opt()' to define option '$opt_text'"
 
     case "$opt_arg_type" in
         existent_file)
@@ -480,6 +480,9 @@ BAP_set_opt_arg_type() {
 main() {
     local input_file=$1
     local output_file="$input_file.out"  
+
+    [ $# -eq 3 ] && [ "$2" = '-o' ] && output_file=$3
+
     local delete_shbang=no
 
     while IFS= read -r x; do
@@ -529,8 +532,8 @@ main() {
 }
 
 if [ "${BASH_SOURCE[-1]##*/}" = "bash_arg_parser" ]; then
-    if [ $# -ne 1 ]; then
-        echo "Usage: $0 <input file name>"
+    if [ $# -ne 1 ] && [ $# -ne 3 ]; then
+        echo "Usage: $0 <input_file_name> [-o <output_file_name>]"
         exit 1
     fi
     main "$@"
