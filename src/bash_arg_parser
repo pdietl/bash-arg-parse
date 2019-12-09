@@ -418,8 +418,6 @@ BAP_generate_top_level_cmd_parser() {
 
     if [ -n "$opt_help_text" ]; then
         help_text="  $top_level_cmd_name [-h]"$'\n'$help_text$'Options:\n  -h    Show this help text.\n'$opt_help_text
-    else
-        help_text=$help_text
     fi
 
     case_body+="*) echo \"$help_text\" && exit 1;; "

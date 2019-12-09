@@ -4,7 +4,7 @@
 
 BAP_new_command 'greet'
 BAP_add_optional_short_opt 'greet' 'w' 'whom'
-BAP_create_help_option 'greet'
+BAP_add_short_opt_help_text 'w' 'The persom whom should be greeted.'
 BAP_generate_parse_func 'greet'
 
 greet() {

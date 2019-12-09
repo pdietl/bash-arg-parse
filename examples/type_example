@@ -4,9 +4,9 @@
 
 BAP_new_command 'genkey'
 BAP_set_top_level_cmd_name 'genkey' 'titanium-modsign'
-BAP_add_required_short_opt 'genkey' 'o' 'output_dir' 'Output directory.'
+BAP_add_required_short_opt 'genkey' 'o' 'output_dir'
 BAP_add_optional_short_opt 'genkey' 'c' 'x509_config'
-BAP_create_help_option 'genkey'
+BAP_add_short_opt_help_text 'o' 'The directory to which to output'
 BAP_generate_parse_func 'genkey'
 
 # Let's view the resuling parser function!

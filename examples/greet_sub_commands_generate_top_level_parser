@@ -6,14 +6,13 @@ set -u
 
 BAP_new_command 'santa'
 BAP_set_top_level_cmd_name 'santa' 'greet'
-BAP_add_optional_short_opt 'santa' 'w' 'whom' 'The person whom santa should greet.'
-BAP_create_help_option 'santa'
+BAP_add_optional_short_opt 'santa' 'w' 'whom'
+BAP_add_short_opt_help_text 'w' 'The person whom should be greeted.'
 BAP_generate_parse_func 'santa'
 
 BAP_new_command 'mom'
 BAP_set_top_level_cmd_name 'mom' 'greet'
 BAP_add_required_short_opt 'mom' 'w' 'whom'
-BAP_create_help_option 'mom'
 BAP_generate_parse_func 'mom'
 
 mom() {
